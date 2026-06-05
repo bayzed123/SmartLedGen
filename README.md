@@ -99,11 +99,11 @@ Streamlit Community Cloud offers a free and easy way to deploy your Streamlit ap
     -   **Branch:** `main`
     -   **Main file path:** `app.py`
     -   **Python version:** Select a compatible Python version (e.g., 3.9 or 3.10).
-    -   **Advanced settings:** You might need to add a `packages.txt` file if Playwright requires system-level dependencies not covered by `pip`. For Playwright, you'll typically need to install browser binaries, which Streamlit Cloud handles if `playwright install` is run in a `post_install` script or similar. However, for Streamlit Cloud, you might need to ensure the environment has the necessary browser dependencies. A common approach is to use a `Dockerfile` for more complex setups, but for simpler cases, Streamlit Cloud often manages basic Playwright installations.
+    -   **Advanced settings:** Ensure you have a `packages.txt` file in your root directory with `chromium` listed. This helps Streamlit Cloud install the necessary system-level browser dependencies for Playwright.
 6.  **Deploy:** Click "Deploy!" Streamlit will build and deploy your app.
 
 **Important Note for Playwright on Streamlit Community Cloud:**
-Playwright requires browser binaries. While `playwright install` handles this locally, on Streamlit Community Cloud, you might need to ensure these are available. Sometimes, adding a `packages.txt` with `chromium` or `playwright-chromium` (if available as a system package) can help, or you might need to use a custom Dockerfile for full control over the environment. For most cases, `playwright install` within your `requirements.txt` should trigger the necessary actions during deployment, but be aware of potential issues.
+Playwright requires browser binaries. To ensure these are available on Streamlit Community Cloud, you need to include a `packages.txt` file in your repository's root directory containing `chromium`. This instructs Streamlit Cloud to install the necessary system dependencies. Additionally, the `playwright install` command in your local setup ensures the Python Playwright library can find and use these browsers.
 
 ## Deployment to Render (Free Tier Available)
 
@@ -122,13 +122,17 @@ Render provides a platform to host web services, including Streamlit apps.
 5.  **Create Web Service:** Click "Create Web Service."
 
 **Important Note for Playwright on Render:**
-Render's build environment will execute `playwright install`, which should download the necessary browser binaries. Ensure your `requirements.txt` is correct and `playwright install` is part of your build command.
+Render's build environment will execute `playwright install`, which should download the necessary browser binaries. Ensure your `requirements.txt` is correct and `playwright install` is part of your build command. If you encounter issues, consider adding a `Dockerfile` for more explicit control over the environment and Playwright setup.
 
-## Important Notes
+## Troubleshooting Common Issues
 
--   **Google Maps Selectors:** The HTML structure of Google Maps can change frequently. If the bot stops working correctly, you may need to inspect the Google Maps page and update the CSS selectors in `app.py`.
--   **Block Resistance:** For heavy usage, consider integrating proxy rotation, CAPTCHA solving services, or dedicated email finder APIs as suggested in the `app.py` comments to enhance robustness and avoid IP blocking.
--   **Asynchronous Execution:** The current Streamlit implementation uses `asyncio.run` which blocks the main thread. For a more responsive UI during long scraping sessions, consider using `streamlit-extras.st_async` or running the scraping logic in a separate process/thread.
+-   **`CachedWidgetWarning`:** This warning occurs when Streamlit widget commands are used inside functions decorated with `@st.cache_data` or `@st.cache_resource`. To fix this, ensure all Streamlit UI elements (like `st.text_area`, `st.dataframe`) are called directly in the main script flow or within functions that are *not* cached. In `app.py`, `get_google_sheet_client` no longer uses `@st.cache_resource` to avoid this, and log updates are handled in the main UI loop.
+-   **Playwright Browser Launch Errors (e.g., `Error: This app has encountered an error.`):** This typically means Playwright cannot find or launch the browser executable. On cloud platforms like Streamlit Community Cloud or Render, ensure that:
+    -   You have `playwright install` in your build command (for Render) or that `packages.txt` with `chromium` is present (for Streamlit Cloud).
+    -   The environment has sufficient resources (memory, CPU) to run a browser.
+    -   If running locally, ensure `playwright install` has been executed in your virtual environment.
+-   **Streamlit UI Freezing:** Long-running operations (like web scraping) can block Streamlit's single-threaded event loop, making the UI unresponsive. In `app.py`, the scraping logic is now run in a separate `threading.Thread` to prevent this. The UI is updated asynchronously by modifying `st.session_state` and using `st.rerun()`.
+-   **Google Maps Selectors:** The HTML structure of Google Maps can change frequently. If the bot stops working correctly, you may need to inspect the Google Maps page using your browser's developer tools and update the CSS selectors in `app.py` (e.g., `scrollable_div_selector`, `business_cards`, `phone_tag`, `address_tag`, `website_tag`).
 
 ## License
 
