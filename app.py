@@ -1,4 +1,3 @@
-
 import streamlit as st
 import asyncio
 import re
@@ -36,7 +35,7 @@ if 'stop_scraping' not in st.session_state:
 if 'update_queue' not in st.session_state:
     st.session_state.update_queue = queue.Queue()
 
-# --- Helper Functions --- #
+# --- Helper Functions (called from background thread) --- #
 def send_update_to_ui(type, data):
     st.session_state.update_queue.put({'type': type, 'data': data})
 
@@ -92,7 +91,7 @@ def get_google_sheet_client():
         # Add headers if the sheet is empty
         if not worksheet.row_values(1):
             worksheet.append_row(['Keyword', 'Location', 'Business Name', 'Phone Number', 'Address', 'Website', 'Email'])
-        send_update_to_ui('log', f"Successfully connected to Google Sheet: {GOOGLE_SHEET_NAME}")
+        send_update_to_ui('log', f"Successfully connected to Google Sheet: {GOOGLE_SHEETS_CREDENTIALS_PATH}")
         return worksheet
     except Exception as e:
         send_update_to_ui('log', f"Error connecting to Google Sheets. Make sure '{GOOGLE_SHEETS_CREDENTIALS_PATH}' is correct and the sheet '{GOOGLE_SHEET_NAME}' exists and is shared with the service account. Error: {e}")
@@ -239,14 +238,14 @@ with st.sidebar:
                 send_update_to_ui('log', "Starting lead generation...")
                 # Run the scraper in a separate thread to prevent UI freezing
                 threading.Thread(target=run_scraper_in_thread, args=(keyword_input, location_input)).start()
-                st.rerun() # Rerun to update UI with running status
+                # No st.rerun() here, updates will be handled by the queue processing loop
             else:
                 st.error("Please enter both Keyword and Location.")
     with col2:
         if st.button("Stop Scraping", type="secondary", disabled=not st.session_state.scraping_running):
             st.session_state.stop_scraping = True
             send_update_to_ui('log', "Stop signal sent. Finishing current task and shutting down.")
-            st.rerun()
+            # No st.rerun() here, status update will be handled by the queue processing loop
 
     st.download_button(
         label="Download as CSV",
@@ -257,38 +256,37 @@ with st.sidebar:
     )
 
 # Main content area
-# Placeholders for dynamic content
+st.subheader("Live Status Console")
 log_display_area = st.empty()
+
+st.subheader("Live Data Preview")
 data_table_display_area = st.empty()
 
 # Function to process updates from the queue and update UI
 def process_queue_updates():
-    rerun_needed = False
     while not st.session_state.update_queue.empty():
         update = st.session_state.update_queue.get()
         if update['type'] == 'log':
             st.session_state.log_messages.append(update['data'])
             if len(st.session_state.log_messages) > 100:
                 st.session_state.log_messages = st.session_state.log_messages[-100:]
-            rerun_needed = True
+            log_display_area.text_area("Live Status Console", value="\n".join(st.session_state.log_messages[::-1]), height=300, key="log_area_display")
         elif update['type'] == 'data':
             new_lead_df = pd.DataFrame([update['data']])
             st.session_state.leads_df = pd.concat([st.session_state.leads_df, new_lead_df], ignore_index=True)
-            rerun_needed = True
+            data_table_display_area.dataframe(st.session_state.leads_df, use_container_width=True)
         elif update['type'] == 'status':
             if update['data'] == 'stopped':
                 st.session_state.scraping_running = False
-            rerun_needed = True
-    if rerun_needed:
-        st.rerun()
+                # Trigger a rerun to update button states and spinner
+                st.rerun()
 
 # Continuously process updates from the queue
+# This loop runs on every Streamlit rerun (user interaction, timer, etc.)
 process_queue_updates()
 
-# Display log messages
-log_display_area.text_area("Live Status Console", value="\n".join(st.session_state.log_messages[::-1]), height=300, key="log_area")
-
-# Display data table
+# Initial display of log and data table (or after a rerun)
+log_display_area.text_area("Live Status Console", value="\n".join(st.session_state.log_messages[::-1]), height=300, key="log_area_initial")
 data_table_display_area.dataframe(st.session_state.leads_df, use_container_width=True)
 
 # Display spinner if scraping is running
