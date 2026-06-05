@@ -1,28 +1,31 @@
-# SmartLeadGen Bot
+# SmartLeadGen Web Dashboard
 
 ## Overview
 
-The SmartLeadGen Bot is a powerful Python automation tool designed to assist digital marketing agencies and businesses in identifying potential clients who are actively spending on advertising. By leveraging Google Maps data, website scraping, and real-time Google Sheets integration, this bot streamlines the lead generation process, focusing on businesses within specified keywords and locations.
+The SmartLeadGen Web Dashboard is an interactive, mobile-responsive application built with Streamlit, designed to provide a user-friendly interface for the lead generation bot. It automates the process of finding potential digital marketing clients by scraping Google Maps and business websites, displaying real-time progress, and exporting data.
 
 ## Features
 
-- **Dynamic User Input:** Prompts for Keyword and Location, allowing flexible search queries.
-- **Google Maps Search Automation:** Utilizes Playwright to automate browser interactions for Google Maps searches.
-- **Comprehensive Scraping:** Automatically scrolls and extracts business names, phone numbers, addresses, and website URLs from Google Maps.
-- **Email Deep Scraper:** Visits extracted business websites and scans homepages and contact pages for email addresses using BeautifulSoup and Regex.
-- **Live Google Sheets Export:** Appends all collected data directly to a Google Sheet in real-time using `gspread`.
+-   **Interactive Control Panel:** User-friendly input fields for "Keyword" and "Location" to dynamically control the scraping process.
+-   **Live Status Console:** Real-time logging of the bot's activities, including scraping progress and email extraction status.
+-   **Live Data Preview:** A dynamic data table that updates in real-time as new leads are identified and processed.
+-   **CSV Export:** Instant download of collected leads as a CSV file directly from the dashboard.
+-   **Google Sheets Integration:** Seamlessly appends all collected data to a specified Google Sheet in real-time.
+-   **Mobile Responsive:** Designed to work efficiently and look great on various devices, including mobile phones.
 
 ## Technical Stack
 
-- **Python 3.x**
-- **Playwright:** For browser automation and web scraping.
-- **BeautifulSoup4:** For parsing HTML content and extracting data.
-- **gspread:** For interacting with Google Sheets API.
-- **re (Regex):** For email pattern matching.
+-   **Python 3.x**
+-   **Streamlit:** For building the interactive web dashboard.
+-   **Playwright:** For robust browser automation and web scraping from Google Maps.
+-   **BeautifulSoup4:** For parsing HTML content and extracting data from business websites.
+-   **gspread:** For interacting with the Google Sheets API.
+-   **pandas:** For efficient data handling and display.
+-   **re (Regex):** For advanced email pattern matching.
 
 ## Setup and Installation
 
-Follow these steps to get your SmartLeadGen Bot up and running.
+Follow these steps to set up and run the SmartLeadGen Web Dashboard locally.
 
 ### 1. Clone the Repository
 
@@ -33,7 +36,7 @@ cd SmartLeadGen
 
 ### 2. Install Dependencies
 
-It's recommended to use a virtual environment.
+It's highly recommended to use a virtual environment.
 
 ```bash
 python3 -m venv venv
@@ -44,7 +47,7 @@ playwright install  # Install Playwright browser binaries
 
 ### 3. Google Sheets API Credentials Setup
 
-To enable the bot to write data to your Google Sheet, you need to set up Google Sheets API credentials.
+To enable the bot to write data to your Google Sheet, you need to set up Google Sheets API credentials. This involves creating a service account and sharing your Google Sheet with it.
 
 1.  **Enable the Google Sheets API:**
     - Go to the [Google Cloud Console](https://console.cloud.google.com/).
@@ -67,32 +70,65 @@ To enable the bot to write data to your Google Sheet, you need to set up Google 
     - A JSON file will be downloaded to your computer. Rename this file to `google_sheets_credentials.json` and place it in the root directory of your `SmartLeadGen` project.
 
 4.  **Share Your Google Sheet with the Service Account:**
-    - Create a new Google Sheet (or use an existing one) where you want the data to be exported. Name it `Lead Generation Data` as specified in `bot.py`.
+    - Create a new Google Sheet (or use an existing one) where you want the data to be exported. Name it `Lead Generation Data` as specified in `app.py`.
     - Open the Google Sheet, click the "Share" button.
     - In the "Share with people and groups" section, paste the email address of your service account (found in the downloaded JSON file under `client_email`).
     - Grant "Editor" permissions to the service account.
     - Click "Done."
 
-### 4. Running the Bot
+### 4. Running the Web Dashboard Locally
 
-Once all dependencies are installed and Google Sheets API is configured, you can run the bot:
+Once all dependencies are installed and Google Sheets API is configured, you can run the Streamlit app:
 
 ```bash
-python3 bot.py
+streamlit run app.py
 ```
 
-The bot will then prompt you to enter the Keyword and Location:
+This will open the web dashboard in your browser, typically at `http://localhost:8501`.
 
-```
-Enter Keyword (e.g., Fashion Showroom, Real Estate Agency, Dental Clinic, Restaurant, Interior Design, Tour Agency): 
-Enter Location (e.g., Dhaka, Chittagong, Tangail, Bangladesh): 
-```
+## Deployment to Streamlit Community Cloud (Free)
+
+Streamlit Community Cloud offers a free and easy way to deploy your Streamlit applications.
+
+1.  **Fork the Repository:** Ensure your `SmartLeadGen` repository is public on GitHub.
+2.  **Sign Up/Log In:** Go to [Streamlit Community Cloud](https://streamlit.io/cloud) and sign up or log in.
+3.  **Deploy an App:** Click on "New app" and connect your GitHub account.
+4.  **Select Repository:** Choose the `SmartLeadGen` repository.
+5.  **Configure Deployment:**
+    -   **Repository:** `your-username/SmartLeadGen`
+    -   **Branch:** `main`
+    -   **Main file path:** `app.py`
+    -   **Python version:** Select a compatible Python version (e.g., 3.9 or 3.10).
+    -   **Advanced settings:** You might need to add a `packages.txt` file if Playwright requires system-level dependencies not covered by `pip`. For Playwright, you'll typically need to install browser binaries, which Streamlit Cloud handles if `playwright install` is run in a `post_install` script or similar. However, for Streamlit Cloud, you might need to ensure the environment has the necessary browser dependencies. A common approach is to use a `Dockerfile` for more complex setups, but for simpler cases, Streamlit Cloud often manages basic Playwright installations.
+6.  **Deploy:** Click "Deploy!" Streamlit will build and deploy your app.
+
+**Important Note for Playwright on Streamlit Community Cloud:**
+Playwright requires browser binaries. While `playwright install` handles this locally, on Streamlit Community Cloud, you might need to ensure these are available. Sometimes, adding a `packages.txt` with `chromium` or `playwright-chromium` (if available as a system package) can help, or you might need to use a custom Dockerfile for full control over the environment. For most cases, `playwright install` within your `requirements.txt` should trigger the necessary actions during deployment, but be aware of potential issues.
+
+## Deployment to Render (Free Tier Available)
+
+Render provides a platform to host web services, including Streamlit apps.
+
+1.  **Sign Up/Log In:** Go to [Render](https://render.com/) and sign up or log in.
+2.  **New Web Service:** Click "New" > "Web Service."
+3.  **Connect GitHub:** Connect your GitHub account and select the `SmartLeadGen` repository.
+4.  **Configure Deployment:**
+    -   **Name:** `smartleadgen-dashboard` (or your preferred name)
+    -   **Root Directory:** `/`
+    -   **Runtime:** `Python 3`
+    -   **Build Command:** `pip install -r requirements.txt && playwright install`
+    -   **Start Command:** `streamlit run app.py --server.port $PORT --server.enableCORS false --server.enableXsrfProtection false`
+    -   **Instance Type:** Choose a free tier instance if available.
+5.  **Create Web Service:** Click "Create Web Service."
+
+**Important Note for Playwright on Render:**
+Render's build environment will execute `playwright install`, which should download the necessary browser binaries. Ensure your `requirements.txt` is correct and `playwright install` is part of your build command.
 
 ## Important Notes
 
--   **Google Maps Selectors:** The HTML structure of Google Maps can change frequently. If the bot stops working correctly, you may need to inspect the Google Maps page and update the CSS selectors in `bot.py` (e.g., `scrollable_div_selector`, `business_cards`, `phone_tag`, `address_tag`, `website_tag`).
--   **Block Resistance:** For heavy usage, consider integrating proxy rotation, CAPTCHA solving services, or dedicated email finder APIs as suggested in the `bot.py` comments to enhance robustness and avoid IP blocking.
--   **Headless Mode:** By default, Playwright runs in headless mode (browser not visible). To see the browser actions for debugging, change `headless=True` to `headless=False` in `bot.py`.
+-   **Google Maps Selectors:** The HTML structure of Google Maps can change frequently. If the bot stops working correctly, you may need to inspect the Google Maps page and update the CSS selectors in `app.py`.
+-   **Block Resistance:** For heavy usage, consider integrating proxy rotation, CAPTCHA solving services, or dedicated email finder APIs as suggested in the `app.py` comments to enhance robustness and avoid IP blocking.
+-   **Asynchronous Execution:** The current Streamlit implementation uses `asyncio.run` which blocks the main thread. For a more responsive UI during long scraping sessions, consider using `streamlit-extras.st_async` or running the scraping logic in a separate process/thread.
 
 ## License
 
