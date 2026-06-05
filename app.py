@@ -8,6 +8,7 @@ import gspread
 import queue
 from dotenv import load_dotenv
 import os
+import json
 
 # --- Load Configuration from .env File --- #
 load_dotenv()
@@ -89,12 +90,20 @@ async def scrape_emails_from_website(page, website_url):
 
 def get_google_sheet_client():
     """
-    Authenticate and connect to a Google Sheets document.
+    Authenticate and connect to a Google Sheets document using st.secrets.
     """
     try:
-        gc = gspread.service_account(filename=GOOGLE_SHEETS_CREDENTIALS_PATH)
+        # সরাসরি Streamlit secrets থেকে ডেটা নেওয়া হচ্ছে, কোনো ফাইলের দরকার নেই
+        creds_data = st.secrets["GOOGLE_CREDENTIALS"]
+        if isinstance(creds_data, str):
+            creds_dict = json.loads(creds_data)
+        else:
+            creds_dict = dict(creds_data)
+            
+        gc = gspread.service_account_from_dict(creds_dict)
         spreadsheet = gc.open(GOOGLE_SHEET_NAME)
         worksheet = spreadsheet.sheet1
+        
         # Ensure headers are added to the sheet
         if not worksheet.row_values(1):
             worksheet.append_row(['Keyword', 'Location', 'Business Name', 'Phone Number', 'Address', 'Website', 'Email'])
