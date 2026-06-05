@@ -10,6 +10,7 @@ import gspread
 import json
 import io
 import threading
+import queue
 
 # --- Configuration --- #
 GOOGLE_SHEETS_CREDENTIALS_PATH = 'google_sheets_credentials.json'
@@ -27,28 +28,24 @@ if 'log_messages' not in st.session_state:
     st.session_state.log_messages = []
 if 'scraping_running' not in st.session_state:
     st.session_state.scraping_running = False
+if 'stop_scraping' not in st.session_state:
+    st.session_state.stop_scraping = False
+
+# --- Queue for real-time updates --- #
+# This queue will be used to pass messages and data from the background thread to the main Streamlit thread
+if 'update_queue' not in st.session_state:
+    st.session_state.update_queue = queue.Queue()
 
 # --- Helper Functions --- #
-def log_message(message):
-    st.session_state.log_messages.append(message)
-    # Limit log messages to prevent excessive memory usage
-    if len(st.session_state.log_messages) > 100:
-        st.session_state.log_messages = st.session_state.log_messages[-100:]
-    # This update needs to happen in the main Streamlit thread, not within a background thread
-    # We'll use a placeholder in the main UI loop to display these.
-
-def update_ui_data(new_lead_data):
-    new_lead_df = pd.DataFrame([new_lead_data])
-    st.session_state.leads_df = pd.concat([st.session_state.leads_df, new_lead_df], ignore_index=True)
-    # Trigger a rerun to update the dataframe display
-    st.rerun()
+def send_update_to_ui(type, data):
+    st.session_state.update_queue.put({'type': type, 'data': data})
 
 async def get_page_content(page, url):
     try:
         await page.goto(url, wait_until='domcontentloaded', timeout=30000)
         return await page.content()
     except Exception as e:
-        log_message(f"Error navigating to {url}: {e}")
+        send_update_to_ui('log', f"Error navigating to {url}: {e}")
         return None
 
 def extract_emails_from_text(text):
@@ -60,7 +57,7 @@ async def scrape_emails_from_website(page, website_url):
     if not website_url or not website_url.startswith(('http://', 'https://')):
         return emails
 
-    log_message(f"  Visiting website: {website_url}")
+    send_update_to_ui('log', f"  Visiting website: {website_url}")
     try:
         # Scrape homepage
         homepage_content = await get_page_content(page, website_url)
@@ -75,6 +72,7 @@ async def scrape_emails_from_website(page, website_url):
             f"{website_url}/reach-us",
         ]
         for contact_url in contact_page_urls:
+            if st.session_state.stop_scraping: return [] # Check for stop signal
             contact_content = await get_page_content(page, contact_url)
             if contact_content:
                 emails.extend(extract_emails_from_text(contact_content))
@@ -82,11 +80,10 @@ async def scrape_emails_from_website(page, website_url):
                     break
 
     except Exception as e:
-        log_message(f"  Error scraping emails from {website_url}: {e}")
+        send_update_to_ui('log', f"  Error scraping emails from {website_url}: {e}")
     return list(set(emails))
 
 # --- Google Sheets Setup --- #
-# Removed @st.cache_resource to avoid CachedWidgetWarning when log_message is called
 def get_google_sheet_client():
     try:
         gc = gspread.service_account(filename=GOOGLE_SHEETS_CREDENTIALS_PATH)
@@ -95,20 +92,20 @@ def get_google_sheet_client():
         # Add headers if the sheet is empty
         if not worksheet.row_values(1):
             worksheet.append_row(['Keyword', 'Location', 'Business Name', 'Phone Number', 'Address', 'Website', 'Email'])
-        log_message(f"Successfully connected to Google Sheet: {GOOGLE_SHEET_NAME}")
+        send_update_to_ui('log', f"Successfully connected to Google Sheet: {GOOGLE_SHEET_NAME}")
         return worksheet
     except Exception as e:
-        log_message(f"Error connecting to Google Sheets. Make sure '{GOOGLE_SHEETS_CREDENTIALS_PATH}' is correct and the sheet '{GOOGLE_SHEET_NAME}' exists and is shared with the service account. Error: {e}")
+        send_update_to_ui('log', f"Error connecting to Google Sheets. Make sure '{GOOGLE_SHEETS_CREDENTIALS_PATH}' is correct and the sheet '{GOOGLE_SHEET_NAME}' exists and is shared with the service account. Error: {e}")
         return None
 
 async def _run_scraper_async(keyword, location):
     worksheet = get_google_sheet_client()
     if not worksheet:
-        st.session_state.scraping_running = False
+        send_update_to_ui('status', 'stopped')
         return
 
     search_query = f"{keyword} in {location}"
-    log_message(f"\nSearching Google Maps for: {search_query}")
+    send_update_to_ui('log', f"\nSearching Google Maps for: {search_query}")
 
     try:
         async with async_playwright() as p:
@@ -117,12 +114,12 @@ async def _run_scraper_async(keyword, location):
 
             # --- Google Maps Search --- #
             maps_url = f"https://www.google.com/maps/search/{search_query.replace(' ', '+')}"
-            log_message(f"Navigating to Google Maps: {maps_url}")
+            send_update_to_ui('log', f"Navigating to Google Maps: {maps_url}")
             await page.goto(maps_url, wait_until='domcontentloaded')
             await page.wait_for_selector('div[role="main"]') # Wait for the main content to load
 
             # --- Auto-scrolling and Scraping --- #
-            log_message("Scrolling and scraping businesses...")
+            send_update_to_ui('log', "Scrolling and scraping businesses...")
             unique_business_names = set()
 
             scrollable_div_selector = 'div[role="main"] > div > div > div:nth-child(1) > div > div > div > div > div > div:nth-child(2)'
@@ -132,13 +129,14 @@ async def _run_scraper_async(keyword, location):
             time.sleep(2)
 
             while True:
+                if st.session_state.stop_scraping: break # Check for stop signal
                 last_count = len(await page.locator('div[role="main"] a[href*="!1s"]').all_text_contents())
                 await page.evaluate(f"document.querySelector('{scrollable_div_selector}').scrollBy(0, 10000)") # Scroll down
                 time.sleep(2) # Give time for new content to load
                 new_count = len(await page.locator('div[role="main"] a[href*="!1s"]').all_text_contents())
                 if new_count == last_count: # If no new businesses loaded after scroll
                     break
-                log_message(f"  Scrolled down, found {new_count} businesses so far...")
+                send_update_to_ui('log', f"  Scrolled down, found {new_count} businesses so far...")
 
             # Extract business details
             html_content = await page.content()
@@ -147,6 +145,7 @@ async def _run_scraper_async(keyword, location):
             business_cards = soup.select('div[role="main"] a[href*="!1s"]')
 
             for card in business_cards:
+                if st.session_state.stop_scraping: break # Check for stop signal
                 name_tag = card.select_one('div.fontHeadlineSmall')
                 name = name_tag.get_text(strip=True) if name_tag else 'N/A'
 
@@ -176,15 +175,15 @@ async def _run_scraper_async(keyword, location):
                 if website_tag:
                     website = website_tag['href']
 
-                log_message(f"  Found: {name}")
-                log_message(f"    Phone: {phone}")
-                log_message(f"    Address: {address}")
-                log_message(f"    Website: {website}")
+                send_update_to_ui('log', f"  Found: {name}")
+                send_update_to_ui('log', f"    Phone: {phone}")
+                send_update_to_ui('log', f"    Address: {address}")
+                send_update_to_ui('log', f"    Website: {website}")
 
                 # --- Email Deep Scraper --- #
                 emails = await scrape_emails_from_website(page, website)
                 email_str = ', '.join(emails) if emails else 'N/A'
-                log_message(f"    Emails: {email_str}")
+                send_update_to_ui('log', f"    Emails: {email_str}")
 
                 business_data = {
                     'Keyword': keyword,
@@ -197,23 +196,22 @@ async def _run_scraper_async(keyword, location):
                 }
 
                 # Update Streamlit DataFrame via a function that triggers rerun
-                update_ui_data(business_data)
+                send_update_to_ui('data', business_data)
 
                 # --- Live Google Sheets Export --- #
                 try:
                     worksheet.append_row(list(business_data.values()))
-                    log_message("    Data appended to Google Sheet.")
+                    send_update_to_ui('log', "    Data appended to Google Sheet.")
                 except Exception as e:
-                    log_message(f"    Error appending data to Google Sheet: {e}")
+                    send_update_to_ui('log', f"    Error appending data to Google Sheet: {e}")
 
             await browser.close()
-        log_message("\n--- Scraping complete! ---")
-        log_message(f"Total businesses found and processed: {len(st.session_state.leads_df)} ")
+        send_update_to_ui('log', "\n--- Scraping complete! ---")
+        send_update_to_ui('log', f"Total businesses found and processed: {len(st.session_state.leads_df)} ")
     except Exception as e:
-        log_message(f"An error occurred during scraping: {e}")
+        send_update_to_ui('log', f"An error occurred during scraping: {e}")
     finally:
-        st.session_state.scraping_running = False
-        st.rerun()
+        send_update_to_ui('status', 'stopped')
 
 def run_scraper_in_thread(keyword, location):
     asyncio.run(_run_scraper_async(keyword, location))
@@ -230,17 +228,25 @@ with st.sidebar:
         placeholder="e.g., Dhaka, Chittagong, Tangail, Bangladesh"
     )
 
-    if st.button("Start Lead Generation", type="primary", disabled=st.session_state.scraping_running):
-        if keyword_input and location_input:
-            st.session_state.log_messages = [] # Clear logs on new run
-            st.session_state.leads_df = pd.DataFrame(columns=['Keyword', 'Location', 'Business Name', 'Phone Number', 'Address', 'Website', 'Email'])
-            st.session_state.scraping_running = True
-            log_message("Starting lead generation...")
-            # Run the scraper in a separate thread to prevent UI freezing
-            threading.Thread(target=run_scraper_in_thread, args=(keyword_input, location_input)).start()
-            st.rerun() # Rerun to update UI with running status
-        else:
-            st.error("Please enter both Keyword and Location.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Start Lead Generation", type="primary", disabled=st.session_state.scraping_running):
+            if keyword_input and location_input:
+                st.session_state.log_messages = [] # Clear logs on new run
+                st.session_state.leads_df = pd.DataFrame(columns=['Keyword', 'Location', 'Business Name', 'Phone Number', 'Address', 'Website', 'Email'])
+                st.session_state.scraping_running = True
+                st.session_state.stop_scraping = False
+                send_update_to_ui('log', "Starting lead generation...")
+                # Run the scraper in a separate thread to prevent UI freezing
+                threading.Thread(target=run_scraper_in_thread, args=(keyword_input, location_input)).start()
+                st.rerun() # Rerun to update UI with running status
+            else:
+                st.error("Please enter both Keyword and Location.")
+    with col2:
+        if st.button("Stop Scraping", type="secondary", disabled=not st.session_state.scraping_running):
+            st.session_state.stop_scraping = True
+            send_update_to_ui('log', "Stop signal sent. Finishing current task and shutting down.")
+            st.rerun()
 
     st.download_button(
         label="Download as CSV",
@@ -251,13 +257,39 @@ with st.sidebar:
     )
 
 # Main content area
+# Placeholders for dynamic content
+log_display_area = st.empty()
+data_table_display_area = st.empty()
+
+# Function to process updates from the queue and update UI
+def process_queue_updates():
+    rerun_needed = False
+    while not st.session_state.update_queue.empty():
+        update = st.session_state.update_queue.get()
+        if update['type'] == 'log':
+            st.session_state.log_messages.append(update['data'])
+            if len(st.session_state.log_messages) > 100:
+                st.session_state.log_messages = st.session_state.log_messages[-100:]
+            rerun_needed = True
+        elif update['type'] == 'data':
+            new_lead_df = pd.DataFrame([update['data']])
+            st.session_state.leads_df = pd.concat([st.session_state.leads_df, new_lead_df], ignore_index=True)
+            rerun_needed = True
+        elif update['type'] == 'status':
+            if update['data'] == 'stopped':
+                st.session_state.scraping_running = False
+            rerun_needed = True
+    if rerun_needed:
+        st.rerun()
+
+# Continuously process updates from the queue
+process_queue_updates()
+
 # Display log messages
-log_placeholder = st.empty()
-log_placeholder.text_area("Live Status Console", value="\n".join(st.session_state.log_messages[::-1]), height=300, key="log_area")
+log_display_area.text_area("Live Status Console", value="\n".join(st.session_state.log_messages[::-1]), height=300, key="log_area")
 
 # Display data table
-data_table_placeholder = st.empty()
-data_table_placeholder.dataframe(st.session_state.leads_df, use_container_width=True)
+data_table_display_area.dataframe(st.session_state.leads_df, use_container_width=True)
 
 # Display spinner if scraping is running
 if st.session_state.scraping_running:
