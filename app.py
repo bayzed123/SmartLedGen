@@ -100,6 +100,10 @@ def get_google_sheet_client():
         else:
             creds_dict = dict(creds_data)
             
+        # --- MAGIC LINE: এই লাইনটি PEM MalformedFraming এরর ফিক্স করবে ---
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
         gc = gspread.service_account_from_dict(creds_dict)
         spreadsheet = gc.open(GOOGLE_SHEET_NAME)
         worksheet = spreadsheet.sheet1
