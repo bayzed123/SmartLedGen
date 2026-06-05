@@ -3,7 +3,7 @@
 ## Overview
 
 The SmartLeadGen Web Dashboard is an interactive, mobile-responsive application built with Streamlit, designed to provide a user-friendly interface for the lead generation bot. It automates the process of finding potential digital marketing clients by scraping Google Maps and business websites, displaying real-time progress, and exporting data.
-
+## |licences|(LicenseRef-[PEP 639]
 ## Features
 
 -   **Interactive Control Panel:** User-friendly input fields for "Keyword" and "Location" to dynamically control the scraping process.
