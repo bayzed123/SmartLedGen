@@ -1,139 +1,205 @@
-# SmartLeadGen Web Dashboard
-|SmartLeadGen|(https://smartledgen-kjugtxpleaim2e6doabffl.streamlit.app/)
-## Overview
+# SmartLeadGen
 
-The SmartLeadGen Web Dashboard is an interactive, mobile-responsive application built with Streamlit, designed to provide a user-friendly interface for the lead generation bot. It automates the process of finding potential digital marketing clients by scraping Google Maps and business websites, displaying real-time progress, and exporting data.
-## |licences|(LicenseRef-PEP 639)
-## Features
+Digital marketing lead-generation dashboard.
+**Developer:** Sayad Md Bayezid Hosan — [sayadbayezid.com](https://sayadbayezid.com)
 
--   **Interactive Control Panel:** User-friendly input fields for "Keyword" and "Location" to dynamically control the scraping process.
--   **Live Status Console:** Real-time logging of the bot's activities, including scraping progress and email extraction status.
--   **Live Data Preview:** A dynamic data table that updates in real-time as new leads are identified and processed.
--   **CSV Export:** Instant download of collected leads as a CSV file directly from the dashboard.
--   **Google Sheets Integration:** Seamlessly appends all collected data to a specified Google Sheet in real-time.
--   **Mobile Responsive:** Designed to work efficiently and look great on various devices, including mobile phones.
+---
 
-## Technical Stack
+## What changed from your last attempt — and why this one should actually collect data
 
--   **Python 3.x**
--   **Streamlit:** For building the interactive web dashboard.
--   **Playwright:** For robust browser automation and web scraping from Google Maps.
--   **BeautifulSoup4:** For parsing HTML content and extracting data from business websites.
--   **gspread:** For interacting with the Google Sheets API.
--   **pandas:** For efficient data handling and display.
--   **re (Regex):** For advanced email pattern matching.
+Your old stack (Playwright + BeautifulSoup4 + gspread + pandas + regex) was the
+right *idea* with one fragile link in the chain: **launching a real Chromium
+browser to scrape the Google Maps website itself.** Two things made that link
+break in practice, and both are now removed:
 
-## Setup and Installation
+1. **Google Maps' website is bot-defended and constantly changing.** It's built
+   for humans clicking around, not for automation — selectors change, content
+   loads lazily, and headless browsers frequently get served empty or blocked
+   pages with no visible error. That silent failure looks exactly like "the
+   logic runs, but data doesn't collect" — which is what you described.
+2. **Chromium needs 300–500MB+ of RAM per instance.** Streamlit Community
+   Cloud's free tier caps a whole app at **~1GB RAM**. Add pandas, Streamlit
+   itself, and any concurrency, and a Playwright-driven app is right at the
+   edge of getting silently killed or timing out — with no clear error message
+   pointing at "it's a memory problem."
 
-Follow these steps to set up and run the SmartLeadGen Web Dashboard locally.
+**The fix:** this rebuild replaces Google Maps scraping with **Google's own
+Places API (New)** — the official, structured, ToS-compliant way to get
+exactly this data (name, address, phone, website, rating). It's a plain HTTPS
+JSON request, so there's no browser, no Chromium, no selector to break, and
+it comfortably fits free-tier hosting. BeautifulSoup + regex are kept — but
+only for the part they're genuinely good at: reading a *business's own public
+website* for a contact email, which is a static-HTML task, not a bot-defended
+one.
 
-### 1. Clone the Repository
+You also don't need a separate backend API service. Streamlit itself plays
+both roles here (UI + the Python logic that calls Google and writes your
+sheet) — one deployable app, fewer moving parts, fewer places to fail.
 
-```bash
-git clone https://github.com/bayzed123/SmartLeadGen.git
-cd SmartLeadGen
+---
+
+## Architecture
+
+```
+smartleadgen/
+├── app.py                       # Dashboard: search form, live table, admin panel, exports
+├── backend/
+│   ├── places_api.py            # Google Places API (New) — search engine
+│   ├── enrichment.py            # Visits each business's own site for email/socials
+│   ├── validation.py            # Phone/name validation, dedup, lead scoring
+│   └── sheets_writer.py         # Google Sheets append (gspread)
+├── .streamlit/
+│   ├── config.toml              # Theme
+│   └── secrets.toml.example     # Copy → secrets.toml for local dev
+├── requirements.txt
+└── .gitignore
 ```
 
-### 2. Install Dependencies
+**Data flow:** keyword + location → Places API (New) Text Search → validate +
+dedupe → (optional) visit the business's own website for email/socials →
+score the lead → show live in the table → CSV export / push to Google Sheets.
 
-It's highly recommended to use a virtual environment.
+---
+
+## 1. Google Places API setup (the core data source)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → create a
+   new project (e.g. "smartleadgen").
+2. **APIs & Services → Library** → enable **"Places API (New)"**. (The old
+   "Places API" is legacy and closed to new projects — make sure it says *New*.)
+3. **APIs & Services → Credentials** → Create Credentials → API key.
+4. Click the new key → **Restrict key**:
+   - Under "API restrictions," limit it to **Places API (New)** only.
+   - Under "Application restrictions," you can leave it unrestricted for a
+     server-side Streamlit app (it never runs in a user's browser), or use IP
+     restrictions if you deploy to a host with a static IP.
+5. **Billing must be enabled** on the project even to use free usage — Google
+   requires a card on file. This is the part that matters most for a student
+   budget, so do these two things immediately after enabling billing:
+   - **APIs & Services → Places API (New) → Quotas** — set a request-per-day
+     cap low enough that you can never be surprised (e.g. 200/day). Once hit,
+     Google simply stops answering calls — it does not let you go over.
+   - **Billing → Budgets & alerts** — set a budget alert (e.g. at $1) so
+     you'd get an email long before anything meaningful is spent.
+
+**On cost:** Places API (New) bills by the *highest-tier field* in your
+request. Phone number, website, and rating fall in the "Enterprise" tier —
+which SmartLeadGen needs, since that's the whole point of the tool. Google
+gives a free monthly allowance per field-tier before any charge applies
+(no single fixed number applies to every account — check your project's
+current allowance and rate under **Billing → Reports**, since Google has
+changed this pricing structure before and may again). For realistic
+student/small-agency usage — a few hundred searches a month, not thousands —
+you'll likely stay inside the free allowance; the quota cap above is your
+safety net regardless. `backend/places_api.py` already requests only the
+fields SmartLeadGen uses, which keeps every call as cheap as it can be for
+what you need.
+
+---
+
+## 2. Google Sheets setup
+
+1. In the same (or a new) Google Cloud project: enable **Google Sheets API**
+   and **Google Drive API**.
+2. **APIs & Services → Credentials → Create Credentials → Service account.**
+   Give it any name (e.g. "smartleadgen-writer"). No roles needed.
+3. Open the service account → **Keys → Add key → Create new key → JSON**.
+   This downloads a `.json` file — this is what the admin panel's "Service
+   account JSON" upload wants, or what goes into `GOOGLE_SERVICE_ACCOUNT_JSON`
+   in secrets.
+4. Open that JSON file and copy the `client_email` value
+   (looks like `smartleadgen-writer@your-project.iam.gserviceaccount.com`).
+5. **Open your target Google Sheet → Share → paste that email → give it
+   Editor access.** This is the single most common setup mistake — the app
+   will fail to open the sheet if this step is skipped.
+6. Copy the sheet's URL — that's what goes in the "Google Sheet URL" field.
+
+---
+
+## 3. Run it locally
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+cd smartleadgen
 pip install -r requirements.txt
-playwright install  # Install Playwright browser binaries
-```
-
-### 3. Google Sheets API Credentials Setup
-
-To enable the bot to write data to your Google Sheet, you need to set up Google Sheets API credentials. This involves creating a service account and sharing your Google Sheet with it.
-
-1.  **Enable the Google Sheets API:**
-    - Go to the [Google Cloud Console](https://console.cloud.google.com/).
-    - Create a new project or select an existing one.
-    - Navigate to "APIs & Services" > "Enabled APIs & Services."
-    - Search for "Google Sheets API" and enable it.
-
-2.  **Create Service Account Credentials:**
-    - In the Google Cloud Console, go to "APIs & Services" > "Credentials."
-    - Click "Create Credentials" > "Service Account."
-    - Give your service account a name (e.g., `smart-leadgen-bot`).
-    - Grant it a role (e.g., `Project` > `Editor` or `Viewer` for broader access, or more restrictively `Google Sheets` > `Google Sheets Editor`).
-    - Click "Done."
-
-3.  **Download JSON Key File:**
-    - After creating the service account, click on its email address.
-    - Go to the "Keys" tab.
-    - Click "Add Key" > "Create new key."
-    - Select "JSON" as the key type and click "Create."
-    - A JSON file will be downloaded to your computer. Rename this file to `google_sheets_credentials.json` and place it in the root directory of your `SmartLeadGen` project.
-
-4.  **Share Your Google Sheet with the Service Account:**
-    - Create a new Google Sheet (or use an existing one) where you want the data to be exported. Name it `Lead Generation Data` as specified in `app.py`.
-    - Open the Google Sheet, click the "Share" button.
-    - In the "Share with people and groups" section, paste the email address of your service account (found in the downloaded JSON file under `client_email`).
-    - Grant "Editor" permissions to the service account.
-    - Click "Done."
-
-### 4. Running the Web Dashboard Locally
-
-Once all dependencies are installed and Google Sheets API is configured, you can run the Streamlit app:
-
-```bash
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# edit .streamlit/secrets.toml with your real keys
 streamlit run app.py
 ```
 
-This will open the web dashboard in your browser, typically at `http://localhost:8501`.
+If you'd rather not touch `secrets.toml` yet, just run it and paste your
+Places API key into the **⚙️ Admin — API & Sheet settings** panel at the top
+of the page — masked as you type, kept only for that session.
 
-## Deployment to Streamlit Community Cloud (Free)
+---
 
-Streamlit Community Cloud offers a free and easy way to deploy your Streamlit applications.
+## 4. Deploy free — Streamlit Community Cloud
 
-1.  **Fork the Repository:** Ensure your `SmartLeadGen` repository is public on GitHub.
-2.  **Sign Up/Log In:** Go to [Streamlit Community Cloud](https://streamlit.io/cloud) and sign up or log in.
-3.  **Deploy an App:** Click on "New app" and connect your GitHub account.
-4.  **Select Repository:** Choose the `SmartLeadGen` repository.
-5.  **Configure Deployment:**
-    -   **Repository:** `your-username/SmartLeadGen`
-    -   **Branch:** `main`
-    -   **Main file path:** `app.py`
-    -   **Python version:** Select a compatible Python version (e.g., 3.9 or 3.10).
-    -   **Advanced settings:** Ensure you have a `packages.txt` file in your root directory with `chromium` listed. This helps Streamlit Cloud install the necessary system-level browser dependencies for Playwright.
-6.  **Deploy:** Click "Deploy!" Streamlit will build and deploy your app.
+1. Push this folder to a **public GitHub repo** (private repos work too, but
+   the free tier only allows one private app).
+2. Go to [share.streamlit.io](https://share.streamlit.io) → sign in with
+   GitHub → **New app** → pick the repo, branch, and `app.py`.
+3. Before or after deploying, open the app's **Settings → Secrets** and paste
+   in the same key/value pairs from `secrets.toml.example`, filled in with your
+   real values. This is the *permanent* store — unlike keys typed into the
+   in-app admin panel, these survive app restarts.
+4. Deploy. First load can take a minute; after ~12 hours with no visitors the
+   app "sleeps" and needs one click to wake up — normal free-tier behavior,
+   not a bug.
 
-**Important Note for Playwright on Streamlit Community Cloud:**
-Playwright requires browser binaries. To ensure these are available on Streamlit Community Cloud, you need to include a `packages.txt` file in your repository's root directory containing `chromium`. This instructs Streamlit Cloud to install the necessary system dependencies. Additionally, the `playwright install` command in your local setup ensures the Python Playwright library can find and use these browsers.
+**Alternative free host:** [Hugging Face Spaces](https://huggingface.co/spaces)
+also runs Streamlit apps for free and doesn't require a public repo. Same
+`requirements.txt` and `secrets` pattern, different dashboard.
 
-## Deployment to Render (Free Tier Available)
+**Where Firestore/Cloudflare fit in:** Cloudflare Workers/Pages don't run a
+persistent Python process, so they're not a fit for hosting the Streamlit app
+itself. Where they *do* help: if you later want a second, queryable copy of
+your leads beyond Google Sheets, **Firestore** (same Google Cloud project,
+same service-account credentials you already set up above) is the more
+natural next step than Cloudflare D1, precisely because it reuses
+credentials you already have. Worth doing later, not needed to launch.
 
-Render provides a platform to host web services, including Streamlit apps.
+---
 
-1.  **Sign Up/Log In:** Go to [Render](https://render.com/) and sign up or log in.
-2.  **New Web Service:** Click "New" > "Web Service."
-3.  **Connect GitHub:** Connect your GitHub account and select the `SmartLeadGen` repository.
-4.  **Configure Deployment:**
-    -   **Name:** `smartleadgen-dashboard` (or your preferred name)
-    -   **Root Directory:** `/`
-    -   **Runtime:** `Python 3`
-    -   **Build Command:** `pip install -r requirements.txt && playwright install`
-    -   **Start Command:** `streamlit run app.py --server.port $PORT --server.enableCORS false --server.enableXsrfProtection false`
-    -   **Instance Type:** Choose a free tier instance if available.
-5.  **Create Web Service:** Click "Create Web Service."
+## 5. What each column means
 
-**Important Note for Playwright on Render:**
-Render's build environment will execute `playwright install`, which should download the necessary browser binaries. Ensure your `requirements.txt` is correct and `playwright install` is part of your build command. If you encounter issues, consider adding a `Dockerfile` for more explicit control over the environment and Playwright setup.
+| Column | Source |
+|---|---|
+| Business Name, Address, Rating, Reviews | Google Places API |
+| Sector/Category | Places API `type`, cleaned up |
+| Phone | Places API, validated & reformatted via `phonenumbers` (Google's own library — catches malformed numbers before they reach your sheet) |
+| Website | Places API |
+| Email, Facebook, Instagram, LinkedIn | Found by visiting the business's own website (only if a website exists) |
+| Lead Score | 🔥 High = no website, or a website with no findable contact/socials — the clearest "needs a digital marketer" signal. 🟡 Medium = some presence but weak (rating < 4.0 or under 10 reviews). ⚪ Low = already well-established online. |
+| Google Maps Link, Date Collected | Reference / audit trail |
 
-## Troubleshooting Common Issues
+Every row is deduplicated by Google's own Place ID, so re-running the same
+search twice won't create duplicate rows in your sheet.
 
--   **`CachedWidgetWarning`:** This warning occurs when Streamlit widget commands are used inside functions decorated with `@st.cache_data` or `@st.cache_resource`. To fix this, ensure all Streamlit UI elements (like `st.text_area`, `st.dataframe`) are called directly in the main script flow or within functions that are *not* cached. In `app.py`, `get_google_sheet_client` no longer uses `@st.cache_resource` to avoid this, and log updates are handled in the main UI loop.
--   **Playwright Browser Launch Errors (e.g., `Error: This app has encountered an error.`):** This typically means Playwright cannot find or launch the browser executable. On cloud platforms like Streamlit Community Cloud or Render, ensure that:
-    -   You have `playwright install` in your build command (for Render) or that `packages.txt` with `chromium` is present (for Streamlit Cloud).
-    -   The environment has sufficient resources (memory, CPU) to run a browser.
-    -   If running locally, ensure `playwright install` has been executed in your virtual environment.
--   **Streamlit UI Freezing:** Long-running operations (like web scraping) can block Streamlit's single-threaded event loop, making the UI unresponsive. In `app.py`, the scraping logic is now run in a separate `threading.Thread` to prevent this. The UI is updated asynchronously by modifying `st.session_state` and using `st.rerun()`.
--   **Google Maps Selectors:** The HTML structure of Google Maps can change frequently. If the bot stops working correctly, you may need to inspect the Google Maps page using your browser's developer tools and update the CSS selectors in `app.py` (e.g., `scrollable_div_selector`, `business_cards`, `phone_tag`, `address_tag`, `website_tag`).
+---
 
-## License
+## 6. Ideas for later (not required to launch)
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+- **Hunter.io** as a fallback when the website-scrape finds no email — it has
+  a small free monthly search allowance; check current limits at
+  [hunter.io/pricing](https://hunter.io/pricing) before relying on a specific
+  number, as free-tier terms shift over time.
+- **"Smart prompt" mode** — instead of typing keyword + location separately,
+  type a free-form goal ("marketing agency clients in Dhaka with no website")
+  and have an LLM turn it into the structured search + a post-filter. This
+  would call the **Anthropic API**, which is a separate, pay-as-you-go product
+  from your Claude.ai subscription (a Pro plan doesn't include API credits).
+  Current API pricing is at [docs.claude.com](https://docs.claude.com) —
+  worth checking there directly since rates and models change.
+- **Firestore** as a second datastore alongside Sheets, if you want to query/
+  filter leads programmatically later instead of only viewing them as rows.
+
+---
+
+## 7. Design notes
+
+Palette and type were chosen deliberately rather than left at Streamlit's
+defaults: a signal-teal (`#0E7C6B`) and amber (`#E8A33D`) against ink and
+off-white, Space Grotesk for headings, Inter for body text, and a small
+animated "ping" mark in the header — a nod to what this tool actually does:
+finding a signal (a real opportunity) inside a lot of noise (every business
+listing that isn't one).
