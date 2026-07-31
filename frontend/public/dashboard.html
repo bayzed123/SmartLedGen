@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartLeadGen — Dashboard</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="slg-shell">
+    <div class="slg-header">
+      <div class="slg-ping"></div>
+      <div>
+        <p class="slg-title">SmartLeadGen</p>
+        <p class="slg-subtitle">Digital marketing lead radar</p>
+      </div>
+      <div class="slg-header-spacer"></div>
+      <div class="slg-header-meta">
+        <div id="userEmail"></div>
+        <button id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <!-- API keys -->
+    <div class="slg-card">
+      <h2>API keys</h2>
+      <p class="slg-card-hint">
+        Google Places API key is required — it's the source that actually finds real businesses.
+        The AI provider below is optional: pick one to turn a free-form goal into a search, and
+        later to draft outreach emails. Your keys are encrypted before they're ever stored.
+      </p>
+
+      <label for="placesKey">Google Places API key <span style="color:#8C2E1E">(required)</span></label>
+      <input type="password" id="placesKey" placeholder="Paste your Places API (New) key" />
+      <button class="slg-btn-ghost slg-btn" id="savePlacesKey" style="margin-bottom:14px">Save</button>
+
+      <label>Optional AI provider (pick one)</label>
+      <div class="slg-provider-choice" id="providerChoice">
+        <div class="slg-provider-opt" data-provider="gemini">
+          <strong>Gemini</strong>
+          <span>Google's model. Good default if you already use Google Cloud.</span>
+        </div>
+        <div class="slg-provider-opt" data-provider="openai">
+          <strong>OpenAI</strong>
+          <span>GPT models. Widely used, straightforward pricing.</span>
+        </div>
+        <div class="slg-provider-opt" data-provider="anthropic">
+          <strong>Anthropic (Claude)</strong>
+          <span>Claude models. Strong at following instructions precisely.</span>
+        </div>
+      </div>
+      <input type="password" id="llmKey" placeholder="Paste the API key for the provider selected above" />
+      <button class="slg-btn-ghost slg-btn" id="saveLlmKey">Save</button>
+
+      <div id="keysBanner" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Search -->
+    <div class="slg-card">
+      <h2>Find leads</h2>
+      <p class="slg-card-hint">Type a keyword and location, or describe your goal in plain words if an AI provider is configured above.</p>
+
+      <div class="slg-row slg-row-3">
+        <div>
+          <label for="keyword">Business type / keyword</label>
+          <input type="text" id="keyword" placeholder="e.g. dentist, boutique hotel" />
+        </div>
+        <div>
+          <label for="location">Location</label>
+          <input type="text" id="location" placeholder="e.g. Gulshan, Dhaka" />
+        </div>
+        <div>
+          <label for="maxResults">Max results</label>
+          <input type="number" id="maxResults" value="20" min="5" max="60" step="5" />
+        </div>
+      </div>
+
+      <label for="freeformGoal">Or describe your goal instead (needs an AI provider key above)</label>
+      <textarea id="freeformGoal" placeholder="e.g. marketing agency clients in Dhaka with no website"></textarea>
+
+      <div class="slg-check">
+        <input type="checkbox" id="runEnrichment" checked />
+        <label for="runEnrichment">Visit each website for email &amp; social links (slower, more thorough)</label>
+      </div>
+
+      <button class="slg-btn" id="startBtn">▶ Start search</button>
+      <div id="searchBanner" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Live progress -->
+    <div class="slg-card" id="progressCard" style="display:none">
+      <h2>Live progress</h2>
+      <div class="slg-progress-track"><div class="slg-progress-fill" id="progressFill"></div></div>
+      <div class="slg-progress-meta">
+        <span id="progressText">0 / 0</span>
+        <span id="elapsedText">00:00</span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="slg-card">
+      <h2>Collected leads</h2>
+      <p class="slg-card-hint">
+        <span class="slg-badge-high">🔥 High</span>&nbsp; no website or no online contact found &nbsp;&nbsp;
+        <span class="slg-badge-medium">🟡 Medium</span>&nbsp; some presence but weak &nbsp;&nbsp;
+        <span class="slg-badge-low">⚪ Low</span>&nbsp; already well-established online
+      </p>
+
+      <div class="slg-metrics">
+        <div class="slg-metric"><b id="mTotal">0</b><span>Total leads</span></div>
+        <div class="slg-metric"><b id="mHigh">0</b><span>🔥 High opportunity</span></div>
+        <div class="slg-metric"><b id="mEmail">0</b><span>With email</span></div>
+        <div class="slg-metric"><b id="mPhone">0</b><span>With phone</span></div>
+      </div>
+
+      <div class="slg-table-wrap">
+        <table class="slg-table" id="leadsTable">
+          <thead>
+            <tr>
+              <th>Business</th><th>Sector</th><th>Phone</th><th>Website</th>
+              <th>Email</th><th>Rating</th><th>Score</th><th>Maps</th>
+            </tr>
+          </thead>
+          <tbody id="leadsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="slg-row slg-row-2" style="margin-top:18px">
+        <a class="slg-btn slg-btn-ghost" id="downloadCsv" style="text-align:center;text-decoration:none;display:none">⬇ Download CSV</a>
+        <div>
+          <input type="text" id="sheetUrl" placeholder="Google Sheet URL (share it with support@sayadbayezid.com as Editor first)" />
+          <button class="slg-btn-ghost slg-btn" id="pushSheet" style="width:100%">📤 Push to Google Sheet</button>
+        </div>
+      </div>
+      <div id="exportBanner" style="margin-top:12px"></div>
+    </div>
+
+    <p class="slg-footer">SmartLeadGen · Sayad Md Bayezid Hosan · sayadbayezid.com</p>
+  </div>
+
+  <script src="/app.js"></script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

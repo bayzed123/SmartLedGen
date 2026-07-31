@@ -1,0 +1,131 @@
+/* SmartLeadGen — shared design system.
+   Carried forward on purpose from the existing app.py Streamlit build
+   (same palette, same type pairing, same "ping" mark) so the product
+   keeps one visual identity across the migration, not two. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --ink: #10151F;
+  --off-white: #F7F6F3;
+  --teal: #0E7C6B;
+  --teal-deep: #0A5A4D;
+  --amber: #E8A33D;
+  --line: #E4E1DA;
+  --text-soft: #5B6472;
+  --radius: 14px;
+  --shadow: 0 8px 24px rgba(16, 21, 31, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--off-white);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.01em; margin: 0; }
+
+.slg-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 24px; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--teal) 0%, var(--ink) 130%);
+  color: white; margin-bottom: 24px;
+}
+.slg-ping { width: 14px; height: 14px; border-radius: 50%; background: var(--amber); position: relative; flex-shrink: 0; }
+.slg-ping::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid var(--amber); opacity: 0.6; animation: slg-pulse 1.8s ease-out infinite;
+}
+@keyframes slg-pulse { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
+.slg-title { font-size: 1.3rem; font-weight: 700; margin: 0; }
+.slg-subtitle { font-size: 0.82rem; opacity: 0.88; margin: 2px 0 0; }
+.slg-header-spacer { flex: 1; }
+.slg-header-meta { font-size: 0.82rem; opacity: 0.9; text-align: right; }
+.slg-header-meta button {
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 8px; padding: 4px 10px; font-size: 0.78rem; cursor: pointer; margin-top: 4px;
+}
+
+.slg-shell { max-width: 960px; margin: 32px auto; padding: 0 20px 60px; }
+.slg-card {
+  background: white; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow);
+}
+.slg-card h2 { font-size: 1.05rem; margin-bottom: 4px; }
+.slg-card-hint { color: var(--text-soft); font-size: 0.86rem; margin: 0 0 16px; }
+
+label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
+input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+  font-family: 'Inter', sans-serif; font-size: 0.92rem; margin-bottom: 14px; background: var(--off-white);
+}
+textarea { resize: vertical; min-height: 60px; }
+.slg-row { display: grid; gap: 14px; }
+.slg-row-2 { grid-template-columns: 1fr 1fr; }
+.slg-row-3 { grid-template-columns: 2fr 2fr 1fr; }
+@media (max-width: 640px) { .slg-row-2, .slg-row-3 { grid-template-columns: 1fr; } }
+
+button.slg-btn {
+  background: var(--teal); color: white; border: none; border-radius: 8px;
+  padding: 11px 20px; font-weight: 600; font-size: 0.92rem; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: background 0.15s ease;
+}
+button.slg-btn:hover { background: var(--teal-deep); }
+button.slg-btn:disabled { background: #A9B2AE; cursor: not-allowed; }
+button.slg-btn-ghost {
+  background: transparent; color: var(--teal); border: 1px solid var(--teal);
+}
+button.slg-btn-ghost:hover { background: rgba(14,124,107,0.08); }
+
+.slg-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.slg-check input { width: auto; margin: 0; }
+.slg-check label { margin: 0; font-weight: 500; }
+
+.slg-provider-choice { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 640px) { .slg-provider-choice { grid-template-columns: 1fr; } }
+.slg-provider-opt {
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer;
+  font-size: 0.84rem; transition: border-color 0.15s ease;
+}
+.slg-provider-opt strong { display: block; font-family: 'Space Grotesk', sans-serif; margin-bottom: 3px; }
+.slg-provider-opt span { color: var(--text-soft); font-size: 0.78rem; }
+.slg-provider-opt.selected { border-color: var(--teal); background: rgba(14,124,107,0.06); }
+
+.slg-progress-track { background: var(--line); border-radius: 999px; height: 10px; overflow: hidden; margin: 10px 0; }
+.slg-progress-fill { background: var(--teal); height: 100%; width: 0%; transition: width 0.3s ease; }
+.slg-progress-meta { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-soft); font-family: 'JetBrains Mono', monospace; }
+
+.slg-banner { border-radius: 10px; padding: 12px 16px; font-size: 0.86rem; margin-bottom: 14px; }
+.slg-banner-warn { background: #FCEBD5; color: #7A4A0E; border: 1px solid #E8A33D66; }
+.slg-banner-error { background: #FBE7E4; color: #8C2E1E; border: 1px solid #D9634F66; }
+.slg-banner-ok { background: #E4F3EF; color: #0A5A4D; border: 1px solid #0E7C6B44; }
+
+.slg-badge-high { background:#FCEBD5; color:#9A5B10; padding:2px 10px; border-radius:20px; font-size:0.78rem; font-weight:600; }
+.slg-badge-medium { background:#E8EEF7; color:#3D5A80; padding:2px 10px; border-radius:20px; font-size:0.78rem; font-weight:600; }
+.slg-badge-low { background:#EEF1F4; color:#6B7684; padding:2px 10px; border-radius:20px; font-size:0.78rem; font-weight:600; }
+
+table.slg-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+table.slg-table th { text-align: left; color: var(--text-soft); font-weight: 600; padding: 8px 10px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+table.slg-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.slg-table-wrap { overflow-x: auto; }
+
+.slg-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 640px) { .slg-metrics { grid-template-columns: repeat(2, 1fr); } }
+.slg-metric { background: var(--off-white); border-radius: 10px; padding: 12px 14px; }
+.slg-metric b { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; }
+.slg-metric span { font-size: 0.76rem; color: var(--text-soft); }
+
+.slg-auth-shell { max-width: 400px; margin: 60px auto; padding: 0 20px; }
+.slg-link-row { text-align: center; font-size: 0.86rem; margin-top: 6px; color: var(--text-soft); }
+.slg-link-row a { color: var(--teal); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+.slg-footer { text-align: center; font-size: 0.78rem; color: var(--text-soft); margin-top: 30px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slg-ping::after { animation: none; }
+  button.slg-btn, .slg-progress-fill { transition: none; }
+}
