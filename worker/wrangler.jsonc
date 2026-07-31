@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "smartleadgen-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-31",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Created already — see README "What's already provisioned"
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "smartleadgen",
+      "database_id": "44e4b038-2a5c-4162-8c3e-2ad9203a6550"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "d0a494bc52c645718b64703e02426645"
+    }
+  ],
+
+  // Vars are fine to be public. Real secrets (ENCRYPTION_KEY, GOOGLE_CLIENT_ID,
+  // GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN) are set with `wrangler secret put`
+  // instead — see README — never written here, never committed to GitHub.
+  "vars": {
+    "ADMIN_EMAIL": "support@sayadbayezid.com",
+    "FREE_TRIAL_RUNS": "1"
+  }
+}
