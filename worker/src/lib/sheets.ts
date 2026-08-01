@@ -2,12 +2,12 @@
  * Replaces backend/sheets_writer.py's per-user service-account-JSON model
  * (the exact friction point that was causing the "keno service account
  * submit korte bole" complaint) with a single OAuth-connected account:
- * support@sayadbayezid.com. A user just shares their own Sheet with that
- * email as Editor — no Google Cloud project, no JSON file, on their end.
+ * sayadmdbayezidhosan@gmail.com. A user just shares their own Sheet with
+ * that email as Editor — no Google Cloud project, no JSON file, on their end.
  *
  * One-time setup (you only, not per-user) — see README section
- * "Connecting support@sayadbayezid.com" for the exact console steps to
- * get GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN.
+ * "Connecting sayadmdbayezidhosan@gmail.com" for the exact console steps
+ * to get GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN.
  */
 import type { Env, LeadRow } from "../types";
 import { LEAD_HEADER_ROW } from "../types";
@@ -68,7 +68,7 @@ async function ensureHeaderRow(accessToken: string, spreadsheetId: string, works
   }
   if (readResp.status === 403) {
     throw new SheetsError(
-      "Access denied. Make sure support@sayadbayezid.com has been added as an Editor on this sheet."
+      "Access denied. Make sure sayadmdbayezidhosan@gmail.com has been added as an Editor on this sheet."
     );
   }
   const data = (await readResp.json()) as { values?: string[][] };
