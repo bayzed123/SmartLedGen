@@ -28,7 +28,18 @@ export async function runJob(env: Env, jobId: string, userId: string) {
   try {
     const placesKeyRow = await getProviderKey(env.DB, userId, "google_places");
     if (!placesKeyRow) throw new PlacesAPIError("No Google Places API key configured for this account.");
-    const placesApiKey = await decryptSecret(placesKeyRow.encrypted_key, placesKeyRow.iv, env.ENCRYPTION_KEY);
+    let placesApiKey: string;
+    try {
+      placesApiKey = await decryptSecret(placesKeyRow.encrypted_key, placesKeyRow.iv, env.ENCRYPTION_KEY);
+    } catch (e: any) {
+      // Most common cause: ENCRYPTION_KEY was set, a key was saved with it,
+      // then ENCRYPTION_KEY got set AGAIN (e.g. the setup command re-run) to
+      // a different value — old encrypted data no longer decrypts with it.
+      throw new PlacesAPIError(
+        `${e.message} If ENCRYPTION_KEY is fine, your saved Google Places key may have been ` +
+        `encrypted with a since-replaced value — re-enter and save it again, then retry.`
+      );
+    }
 
     const query = buildQuery(job.keyword, job.location);
     let processed = 0;

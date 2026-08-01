@@ -177,3 +177,33 @@ export async function adminListJobs(db: D1Database, limit = 100) {
     .all();
   return results;
 }
+
+// ---------------------------------------------------------------------------
+// Reviews — submitted by registered users, shown publicly only once approved.
+// ---------------------------------------------------------------------------
+
+export async function submitReview(db: D1Database, userId: string, email: string, rating: number, comment: string) {
+  const id = uid();
+  await db
+    .prepare(`INSERT INTO reviews (id, user_id, email, rating, comment) VALUES (?, ?, ?, ?, ?)`)
+    .bind(id, userId, email, rating, comment)
+    .run();
+  return id;
+}
+
+export async function getApprovedReviews(db: D1Database, limit = 20) {
+  const { results } = await db
+    .prepare(`SELECT rating, comment, email, created_at FROM reviews WHERE approved = 1 ORDER BY created_at DESC LIMIT ?`)
+    .bind(limit)
+    .all();
+  return results;
+}
+
+export async function adminListReviews(db: D1Database) {
+  const { results } = await db.prepare(`SELECT * FROM reviews ORDER BY created_at DESC`).all();
+  return results;
+}
+
+export async function setReviewApproved(db: D1Database, reviewId: string, approved: boolean) {
+  await db.prepare(`UPDATE reviews SET approved = ? WHERE id = ?`).bind(approved ? 1 : 0, reviewId).run();
+}
