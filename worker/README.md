@@ -21,7 +21,7 @@ scoring pipeline, same reasoning about why no browser is involved.
 - **BYOK key storage moves from a Streamlit admin panel into encrypted D1
   rows** (`src/lib/crypto.ts` — AES-GCM, key never stored in plaintext).
 - **Google Sheets moves from a per-user service-account-JSON upload to a
-  single connected account** (`support@sayadbayezid.com`) — see setup
+  single connected account** (`sayadmdbayezidhosan@gmail.com`) — see setup
   section below. This is the fix for the original "keno service account
   submit korte bole" friction: a user now just shares their own Sheet
   with that one email as Editor, nothing to create or upload.
@@ -59,13 +59,13 @@ npx wrangler login          # if this machine isn't already authenticated
 openssl rand -base64 32 | tr -d '\n' | npx wrangler secret put ENCRYPTION_KEY
 ```
 
-### 2. Connecting support@sayadbayezid.com for Sheets (one-time, not per-user)
+### 2. Connecting sayadmdbayezidhosan@gmail.com for Sheets (one-time, not per-user)
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), same or a
    new project → enable **Google Sheets API**.
 2. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    → type **Desktop app**. Note the client ID and secret.
-3. Run the OAuth consent flow **once**, signed in as `support@sayadbayezid.com`,
+3. Run the OAuth consent flow **once**, signed in as `sayadmdbayezidhosan@gmail.com`,
    with scope `https://www.googleapis.com/auth/spreadsheets` — the
    [OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
    is the fastest way: gear icon → use your own client ID/secret → authorize
@@ -130,6 +130,11 @@ POST /api/jobs/:id/push-to-sheet                    (auth)
 
 GET  /api/admin/users                               (admin only)
 GET  /api/admin/jobs                                (admin only)
+GET  /api/admin/reviews                             (admin only)
+POST /api/admin/reviews/:id/approve  { approved? }   (admin only)
+
+POST /api/reviews              { rating, comment }  (auth) — registered users only
+GET  /api/reviews                                    — public, approved reviews only
 
 POST /api/support-chat         { message, history? }  — public, rate-limited per IP,
                                                           scoped to product Q&A only
