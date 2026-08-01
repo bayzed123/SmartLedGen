@@ -4,6 +4,8 @@ Digital marketing lead-generation dashboard.
 **Developer:** Sayad Md Bayezid Hosan — [sayadbayezid.com](https://sayadbayezid.com)
 
 ---
+Live Demu [smartGen Lead collector Pro](https://smartleadgen-frontend.sayadmdbayezidhosan.workers.dev/)
+Live Demu [smartGen Lead collector Beta](https://smartledgen-d2l3wnvtlt4siv2quddtpf.streamlit.app)
 
 ## What changed from your last attempt — and why this one should actually collect data
 
