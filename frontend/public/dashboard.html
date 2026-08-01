@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K2X859FJZV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "G-K2X859FJZV");
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SmartLeadGen — Dashboard</title>
 <link rel="stylesheet" href="/styles.css" />
@@ -19,6 +27,15 @@
         <div id="userEmail"></div>
         <button id="logoutBtn">Log out</button>
       </div>
+    </div>
+
+    <!-- Access gate — shown once the free trial is used, until a code is redeemed -->
+    <div class="slg-card" id="accessGate" style="display:none">
+      <h2>Unlock unlimited access</h2>
+      <p class="slg-card-hint">Your free search has been used. Enter your access code below to continue — get one from support@sayadbayezid.com.</p>
+      <input type="text" id="accessCodeInput" placeholder="SMARTGENTOOLS-XXXXXXXXXXXXXXX" />
+      <button class="slg-btn" id="redeemCodeBtn">Redeem code</button>
+      <div id="accessGateBanner" style="margin-top:12px"></div>
     </div>
 
     <!-- Getting started -->

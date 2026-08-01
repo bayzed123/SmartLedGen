@@ -87,7 +87,8 @@ document.getElementById("startBtn").addEventListener("click", async () => {
     startElapsedClock();
   } catch (err) {
     if (err.status === 402) {
-      banner("searchBanner", "Free trial already used — upgrade to run another search.", "warn");
+      banner("searchBanner", "Free trial already used — redeem an access code below to continue.", "warn");
+      document.getElementById("accessGate").style.display = "block";
     } else {
       banner("searchBanner", err.message, "error");
     }
@@ -210,6 +211,49 @@ document.getElementById("pushSheet").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Review
+// ---------------------------------------------------------------------------
+
+let selectedRating = 0;
+document.querySelectorAll("#starRow button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedRating = Number(btn.dataset.star);
+    document.querySelectorAll("#starRow button").forEach((b) => {
+      b.classList.toggle("selected", Number(b.dataset.star) <= selectedRating);
+    });
+  });
+});
+
+document.getElementById("submitReview").addEventListener("click", async () => {
+  const comment = document.getElementById("reviewComment").value.trim();
+  if (!selectedRating) return banner("reviewBanner", "Pick a star rating first.", "warn");
+  if (!comment) return banner("reviewBanner", "Add a short comment with your rating.", "warn");
+  try {
+    const result = await apiFetch("/api/reviews", { method: "POST", body: JSON.stringify({ rating: selectedRating, comment }) });
+    banner("reviewBanner", result.note || "Thanks for the review!", "ok");
+    document.getElementById("reviewComment").value = "";
+  } catch (err) {
+    banner("reviewBanner", err.message, "error");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Access code gate
+// ---------------------------------------------------------------------------
+
+document.getElementById("redeemCodeBtn").addEventListener("click", async () => {
+  const code = document.getElementById("accessCodeInput").value.trim();
+  if (!code) return banner("accessGateBanner", "Paste your access code first.", "warn");
+  try {
+    await apiFetch("/api/access-codes/redeem", { method: "POST", body: JSON.stringify({ code }) });
+    banner("accessGateBanner", "Unlocked! Reloading…", "ok");
+    setTimeout(() => window.location.reload(), 900);
+  } catch (err) {
+    banner("accessGateBanner", err.message, "error");
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
@@ -219,6 +263,9 @@ const AI_PROVIDERS = ["gemini", "openai", "anthropic"];
   try {
     const me = await apiFetch("/api/me");
     document.getElementById("userEmail").textContent = me.email;
+    if (me.plan === "free" && me.free_trial_used) {
+      document.getElementById("accessGate").style.display = "block";
+    }
   } catch { /* not fatal — just leaves the header blank */ }
 
   try {

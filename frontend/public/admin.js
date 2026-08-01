@@ -22,16 +22,44 @@ function escapeHtml(str) {
   document.getElementById("adminContent").style.display = "block";
 
   try {
-    const [{ users }, { jobs }] = await Promise.all([
+    const [{ users }, { jobs }, { reviews }, { codes }] = await Promise.all([
       apiFetch("/api/admin/users"),
       apiFetch("/api/admin/jobs"),
+      apiFetch("/api/admin/reviews"),
+      apiFetch("/api/admin/access-codes"),
     ]);
     renderUsers(users);
     renderJobs(jobs);
+    renderReviews(reviews);
+    renderCodes(codes);
   } catch (err) {
     document.getElementById("adminContent").innerHTML = `<div class="slg-card"><div class="slg-banner slg-banner-error">${escapeHtml(err.message)}</div></div>`;
   }
 })();
+
+document.getElementById("genCodesBtn").addEventListener("click", async () => {
+  const count = Number(document.getElementById("genCodeCount").value) || 1;
+  try {
+    const { codes } = await apiFetch("/api/admin/access-codes/generate", { method: "POST", body: JSON.stringify({ count }) });
+    document.getElementById("genCodesResult").innerHTML =
+      `<div class="slg-banner slg-banner-ok">${codes.map(escapeHtml).join("<br>")}</div>`;
+    const { codes: all } = await apiFetch("/api/admin/access-codes");
+    renderCodes(all);
+  } catch (err) {
+    document.getElementById("genCodesResult").innerHTML = `<div class="slg-banner slg-banner-error">${escapeHtml(err.message)}</div>`;
+  }
+});
+
+function renderCodes(codes) {
+  document.getElementById("codesBody").innerHTML = codes.map((code) => `
+    <tr>
+      <td style="font-family:monospace">${escapeHtml(code.code)}</td>
+      <td>${code.status === "redeemed" ? "✅ Redeemed" : "⏳ Unused"}</td>
+      <td>${escapeHtml(code.redeemed_by_email || "—")}</td>
+      <td>${escapeHtml(code.created_at)}</td>
+    </tr>
+  `).join("");
+}
 
 function renderUsers(users) {
   document.getElementById("mUsers").textContent = users.length;
@@ -44,6 +72,29 @@ function renderUsers(users) {
       <td>${escapeHtml(u.created_at)}</td>
     </tr>
   `).join("");
+}
+
+function renderReviews(reviews) {
+  document.getElementById("reviewsBody").innerHTML = reviews.map((r) => `
+    <tr>
+      <td>${escapeHtml(r.email)}</td>
+      <td>${"★".repeat(r.rating)}</td>
+      <td>${escapeHtml(r.comment)}</td>
+      <td>${r.approved ? "✅ Public" : "⏳ Pending"}</td>
+      <td><button class="slg-btn-ghost slg-btn" data-review-id="${r.id}" data-approved="${r.approved}">${r.approved ? "Unapprove" : "Approve"}</button></td>
+      <td>${escapeHtml(r.created_at)}</td>
+    </tr>
+  `).join("");
+
+  document.querySelectorAll("#reviewsBody button").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.reviewId;
+      const nowApproved = btn.dataset.approved !== "1" && btn.dataset.approved !== "true";
+      await apiFetch(`/api/admin/reviews/${id}/approve`, { method: "POST", body: JSON.stringify({ approved: nowApproved }) });
+      const { reviews } = await apiFetch("/api/admin/reviews");
+      renderReviews(reviews);
+    });
+  });
 }
 
 function renderJobs(jobs) {

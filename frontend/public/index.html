@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K2X859FJZV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "G-K2X859FJZV");
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SmartLeadGen — Find your next client before they find you</title>
 <meta name="description" content="SmartLeadGen finds real local businesses that need a website, SEO, or marketing help — using your own Google Places API key, with results in minutes." />
@@ -15,7 +23,7 @@
     <h1>Find your next digital-marketing client before they find you</h1>
     <p>SmartLeadGen searches real businesses by location and type, flags the ones with a weak (or missing) online presence, and hands you contact details — so your outreach list is ready in minutes, not hours of manual searching.</p>
     <div class="home-hero-ctas">
-      <a href="/login.html?signup=1" class="home-cta-primary">Try your first search free</a>
+      <a href="/login.html?signup=1" class="home-cta-primary">Get Your Access</a>
       <a href="#how-it-works" class="home-cta-secondary">See how it works</a>
     </div>
   </section>
@@ -66,11 +74,10 @@
     <p class="home-pricing-note">Paid plans will be priced per search volume once running costs are confirmed. Existing free-trial users won't be surprised by it — we'll announce it here first.</p>
   </section>
 
-  <section class="home-section">
-    <h2>What early users say</h2>
-    <div class="home-review">
-      <p>"Manually checking which local shops had no website used to take me a full afternoon. This gets me a scored list before my coffee's cold."</p>
-      <div class="home-review-who">— Early tester, digital marketing freelancer</div>
+  <section class="home-section" id="reviews-section">
+    <h2>What users say</h2>
+    <div id="reviewsContainer">
+      <p class="home-section-sub">Loading reviews…</p>
     </div>
   </section>
 
@@ -98,6 +105,7 @@
 
   <script src="/app.js"></script>
   <script src="/partials.js"></script>
+  <script src="/home.js"></script>
   <script src="/chatbot.js"></script>
 </body>
 </html>

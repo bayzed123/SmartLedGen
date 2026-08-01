@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K2X859FJZV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "G-K2X859FJZV");
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow" />
 <title>SmartLeadGen — Admin</title>
@@ -44,6 +52,30 @@
           <table class="slg-table" id="usersTable">
             <thead><tr><th>Email</th><th>Plan</th><th>Free trial used</th><th>Admin</th><th>Joined</th></tr></thead>
             <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="slg-card">
+        <h2>Access codes</h2>
+        <p class="slg-card-hint">Generate paid-access codes to hand out manually, ahead of real subscription billing.</p>
+        <input type="number" id="genCodeCount" value="1" min="1" max="100" style="max-width:120px" />
+        <button class="slg-btn" id="genCodesBtn">Generate</button>
+        <div id="genCodesResult" style="margin-top:12px"></div>
+        <div class="slg-table-wrap" style="margin-top:16px">
+          <table class="slg-table" id="codesTable">
+            <thead><tr><th>Code</th><th>Status</th><th>Redeemed by</th><th>Created</th></tr></thead>
+            <tbody id="codesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="slg-card">
+        <h2>Reviews</h2>
+        <div class="slg-table-wrap">
+          <table class="slg-table" id="reviewsTable">
+            <thead><tr><th>Email</th><th>Rating</th><th>Comment</th><th>Status</th><th>Action</th><th>Date</th></tr></thead>
+            <tbody id="reviewsBody"></tbody>
           </table>
         </div>
       </div>
