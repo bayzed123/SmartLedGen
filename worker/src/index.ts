@@ -8,6 +8,7 @@ import {
   upsertProviderKey, listConfiguredProviders, getProviderKey, createJob, getJob,
   getLeadsForJob, markFreeTrialUsed, setSheetConnection, getSheetConnection,
   adminListUsers, adminListJobs,
+  submitReview, getApprovedReviews, adminListReviews, setReviewApproved,
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
@@ -58,7 +59,7 @@ Facts about SmartLeadGen:
 - Requires the user's own Google Places API key (their own Google Cloud project — enable "Places API (New)", their own cost/quota).
 - Optionally uses one AI provider key the user supplies (Gemini, OpenAI, or Claude) to turn a plain-English goal into a search, and — soon — to draft outreach emails. This key is separate from the required Places key and never replaces it.
 - One free search is included per account; paid pricing is still being finalized (not live yet).
-- Leads can be exported as CSV, or pushed to the user's own Google Sheet (they share their Sheet with support@sayadbayezid.com as Editor first).
+- Leads can be exported as CSV, or pushed to the user's own Google Sheet (they share their Sheet with sayadmdbayezidhosan@gmail.com as Editor first).
 - Every user's API keys are encrypted before storage, and each user's data is isolated from other users' — nobody can see another user's leads or keys.
 - Built by Sayad Md Bayezid Hosan (sayadbayezid.com).
 
@@ -241,7 +242,7 @@ app.post("/api/sheet-connection", requireAuth, async (c) => {
   await setSheetConnection(c.env.DB, c.get("user").id, sheetUrl.trim());
   return c.json({
     ok: true,
-    reminder: "Make sure support@sayadbayezid.com has Editor access on this sheet, or pushes will fail.",
+    reminder: "Make sure sayadmdbayezidhosan@gmail.com has Editor access on this sheet, or pushes will fail.",
   });
 });
 
@@ -272,6 +273,34 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (c) => {
 
 app.get("/api/admin/jobs", requireAuth, requireAdmin, async (c) => {
   return c.json({ jobs: await adminListJobs(c.env.DB) });
+});
+
+app.get("/api/admin/reviews", requireAuth, requireAdmin, async (c) => {
+  return c.json({ reviews: await adminListReviews(c.env.DB) });
+});
+
+app.post("/api/admin/reviews/:id/approve", requireAuth, requireAdmin, async (c) => {
+  const { approved } = await c.req.json<{ approved?: boolean }>();
+  await setReviewApproved(c.env.DB, c.req.param("id") ?? "", approved !== false);
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Reviews — only registered (logged-in) users can submit one; shown on the
+// public homepage only after admin approval, to keep the public list honest.
+// ---------------------------------------------------------------------------
+
+app.post("/api/reviews", requireAuth, async (c) => {
+  const user = c.get("user");
+  const { rating, comment } = await c.req.json<{ rating?: number; comment?: string }>();
+  if (!rating || rating < 1 || rating > 5) return c.json({ error: "Rating must be 1–5." }, 400);
+  if (!comment?.trim()) return c.json({ error: "Please add a short comment with your rating." }, 400);
+  await submitReview(c.env.DB, user.id, user.email, rating, comment.trim().slice(0, 500));
+  return c.json({ ok: true, note: "Thanks — your review will show publicly once approved." });
+});
+
+app.get("/api/reviews", async (c) => {
+  return c.json({ reviews: await getApprovedReviews(c.env.DB) });
 });
 
 // ---------------------------------------------------------------------------
