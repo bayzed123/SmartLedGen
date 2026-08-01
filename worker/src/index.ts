@@ -9,10 +9,12 @@ import {
   getLeadsForJob, markFreeTrialUsed, setSheetConnection, getSheetConnection,
   adminListUsers, adminListJobs,
   submitReview, getApprovedReviews, adminListReviews, setReviewApproved,
+  generateAccessCodes, redeemAccessCode, redeemAccessCodeByEmail, adminListAccessCodes,
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
 import { parseFreeformGoal, callLlm } from "./lib/llmProviders";
+import { sendGA4Event } from "./lib/analytics";
 
 type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -122,6 +124,39 @@ app.post("/api/support-chat", async (c) => {
 app.get("/api/me", requireAuth, async (c) => {
   const user = c.get("user");
   return c.json({ id: user.id, email: user.email, is_admin: !!user.is_admin, plan: user.plan, free_trial_used: !!user.free_trial_used });
+});
+
+app.post("/api/access-codes/redeem", requireAuth, async (c) => {
+  const user = c.get("user");
+  const { code } = await c.req.json<{ code?: string }>();
+  if (!code?.trim()) return c.json({ error: "Enter your access code." }, 400);
+
+  const ok = await redeemAccessCode(c.env.DB, code, user.id);
+  if (!ok) return c.json({ error: "That code isn't valid, or has already been used." }, 400);
+
+  c.executionCtx.waitUntil(sendGA4Event(c.env, user.id, "access_code_redeemed", { user_email: user.email }));
+  return c.json({ ok: true, plan: "paid" });
+});
+
+// Same idea, for the Streamlit app (no Cloudflare account there — just an
+// email typed into its own gate). Rate-limited per IP so codes can't be
+// brute-forced by guessing.
+app.post("/api/streamlit/verify-code", async (c) => {
+  const ip = c.req.header("CF-Connecting-IP") || "unknown";
+  const rateLimitKey = `coderate:${ip}`;
+  const countStr = await c.env.SESSIONS.get(rateLimitKey);
+  const count = countStr ? parseInt(countStr, 10) : 0;
+  if (count >= 10) return c.json({ error: "Too many attempts — try again in an hour." }, 429);
+  await c.env.SESSIONS.put(rateLimitKey, String(count + 1), { expirationTtl: 3600 });
+
+  const { code, email } = await c.req.json<{ code?: string; email?: string }>();
+  if (!code?.trim() || !email?.trim()) return c.json({ error: "Email and access code are both required." }, 400);
+
+  const ok = await redeemAccessCodeByEmail(c.env.DB, code, email);
+  if (!ok) return c.json({ error: "That code isn't valid, or has already been used." }, 400);
+
+  c.executionCtx.waitUntil(sendGA4Event(c.env, email, "access_code_redeemed", { source: "streamlit", user_email: email }));
+  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -277,6 +312,17 @@ app.get("/api/admin/jobs", requireAuth, requireAdmin, async (c) => {
 
 app.get("/api/admin/reviews", requireAuth, requireAdmin, async (c) => {
   return c.json({ reviews: await adminListReviews(c.env.DB) });
+});
+
+app.post("/api/admin/access-codes/generate", requireAuth, requireAdmin, async (c) => {
+  const { count } = await c.req.json<{ count?: number }>();
+  const n = Math.min(Math.max(count ?? 1, 1), 100);
+  const codes = await generateAccessCodes(c.env.DB, n);
+  return c.json({ codes });
+});
+
+app.get("/api/admin/access-codes", requireAuth, requireAdmin, async (c) => {
+  return c.json({ codes: await adminListAccessCodes(c.env.DB) });
 });
 
 app.post("/api/admin/reviews/:id/approve", requireAuth, requireAdmin, async (c) => {
