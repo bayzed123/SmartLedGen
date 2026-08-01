@@ -27,24 +27,29 @@ const DEFAULT_MODELS: Record<LlmProvider, string> = {
 export class LlmProviderError extends Error {}
 
 /** One-shot text completion — provider-agnostic. `apiKey` is the user's
- *  own decrypted key; it is used for this single call and never logged. */
+ *  own decrypted key; it is used for this single call and never logged.
+ *  `system` uses each provider's native system-instruction mechanism
+ *  rather than being prepended into the user turn. */
 export async function callLlm(
   provider: LlmProvider,
   apiKey: string,
   prompt: string,
-  opts: { model?: string; maxTokens?: number } = {}
+  opts: { model?: string; maxTokens?: number; system?: string } = {}
 ): Promise<string> {
   const maxTokens = opts.maxTokens ?? 512;
 
   if (provider === "openai") {
     const model = opts.model ?? DEFAULT_MODELS.openai;
+    const messages = opts.system
+      ? [{ role: "system", content: opts.system }, { role: "user", content: prompt }]
+      : [{ role: "user", content: prompt }];
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
+        messages,
       }),
     });
     if (!resp.ok) throw new LlmProviderError(`OpenAI error (${resp.status}): ${(await resp.text()).slice(0, 300)}`);
@@ -54,12 +59,14 @@ export async function callLlm(
 
   if (provider === "gemini") {
     const model = opts.model ?? DEFAULT_MODELS.gemini;
+    const body: Record<string, unknown> = { contents: [{ parts: [{ text: prompt }] }] };
+    if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
     const resp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify(body),
       }
     );
     if (!resp.ok) throw new LlmProviderError(`Gemini error (${resp.status}): ${(await resp.text()).slice(0, 300)}`);
@@ -79,6 +86,7 @@ export async function callLlm(
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
+        ...(opts.system ? { system: opts.system } : {}),
         messages: [{ role: "user", content: prompt }],
       }),
     });
