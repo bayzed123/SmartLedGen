@@ -149,7 +149,6 @@ POST /api/reviews              { rating, comment }  (auth) — registered users 
 GET  /api/reviews                                    — public, approved reviews only
 
 POST /api/access-codes/redeem  { code }             (auth) — unlocks unlimited access
-POST /api/streamlit/verify-code { code, email }      — same code pool, for the Streamlit app's own gate
 POST /api/admin/access-codes/generate { count }      (admin only)
 GET  /api/admin/access-codes                         (admin only)
 
