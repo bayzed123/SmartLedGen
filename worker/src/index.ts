@@ -82,26 +82,39 @@ app.post("/api/support-chat", async (c) => {
   }>();
   if (!message?.trim()) return c.json({ error: "Message is required." }, 400);
   if (message.length > 500) return c.json({ error: "Keep questions under 500 characters." }, 400);
-  if (!c.env.SUPPORT_CHATBOT_API_KEY) {
-    return c.json({ error: "Chat isn't configured yet — email support@sayadbayezid.com instead." }, 503);
-  }
 
   await c.env.SESSIONS.put(rateLimitKey, String(count + 1), { expirationTtl: 3600 });
 
-  const conversation = (history ?? [])
+  const chatHistory = (history ?? [])
     .slice(-6)
-    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
-    .join("\n");
-  const prompt = conversation ? `${conversation}\nUser: ${message.trim()}` : message.trim();
+    .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
 
   try {
-    const reply = await callLlm("anthropic", c.env.SUPPORT_CHATBOT_API_KEY, prompt, {
+    // Default: Workers AI (Llama) — free, no external account or key needed,
+    // which is why this is the default rather than a paid BYOK provider.
+    if (!c.env.SUPPORT_CHATBOT_API_KEY) {
+      const result: any = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+        messages: [
+          { role: "system", content: SUPPORT_SYSTEM_PROMPT },
+          ...chatHistory,
+          { role: "user", content: message.trim() },
+        ],
+        max_tokens: 300,
+      });
+      return c.json({ reply: (result.response ?? "").trim() });
+    }
+
+    // Optional override: if you later set SUPPORT_CHATBOT_API_KEY, a paid
+    // provider is used instead (e.g. for higher quality than Llama gives).
+    const prompt = chatHistory.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
+    const fullPrompt = prompt ? `${prompt}\nUser: ${message.trim()}` : message.trim();
+    const reply = await callLlm("anthropic", c.env.SUPPORT_CHATBOT_API_KEY, fullPrompt, {
       maxTokens: 300,
       system: SUPPORT_SYSTEM_PROMPT,
     });
     return c.json({ reply: reply.trim() });
   } catch {
-    return c.json({ error: "Couldn't reach the AI provider right now — try again shortly." }, 502);
+    return c.json({ error: "Couldn't reach the AI model right now — try again shortly." }, 502);
   }
 });
 

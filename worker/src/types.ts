@@ -9,6 +9,7 @@ export type LlmProvider = "gemini" | "openai" | "anthropic";
 export interface Env {
   DB: D1Database;
   SESSIONS: KVNamespace;
+  AI: Ai; // Workers AI — free, no external key needed; powers the support chatbot
 
   ADMIN_EMAIL: string;
   FREE_TRIAL_RUNS: string;
