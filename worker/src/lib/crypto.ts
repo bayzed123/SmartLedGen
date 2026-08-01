@@ -20,7 +20,28 @@ function bytesToB64(bytes: Uint8Array): string {
 }
 
 async function importKey(base64Key: string): Promise<CryptoKey> {
-  const raw = b64ToBytes(base64Key);
+  // Defensive: a trailing newline from `openssl rand -base64 32 | wrangler secret put`
+  // is a common source of a silently-broken key — trim it rather than fail cryptically.
+  const normalized = (base64Key ?? "").trim();
+  if (!normalized) {
+    throw new Error(
+      "ENCRYPTION_KEY isn't set on the worker. Run: " +
+      "openssl rand -base64 32 | tr -d '\\n' | npx wrangler secret put ENCRYPTION_KEY"
+    );
+  }
+
+  let raw: Uint8Array;
+  try {
+    raw = b64ToBytes(normalized);
+  } catch {
+    throw new Error("ENCRYPTION_KEY isn't valid base64 — regenerate it (see worker/README.md).");
+  }
+  if (![16, 24, 32].includes(raw.length)) {
+    throw new Error(
+      `ENCRYPTION_KEY must decode to 16, 24, or 32 bytes (got ${raw.length}). Regenerate with: ` +
+      "openssl rand -base64 32 | tr -d '\\n' | npx wrangler secret put ENCRYPTION_KEY"
+    );
+  }
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
