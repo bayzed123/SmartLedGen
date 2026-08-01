@@ -144,7 +144,7 @@ details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
 
 /* ===================== Site chrome (public pages) ===================== */
 
-.site-header { position: sticky; top: 0; z-index: 40; background: var(--ink); border-bottom: 1px solid rgba(255,255,255,0.08); }
+#site-header { position: sticky; top: 0; z-index: 40; background: var(--ink); border-bottom: 1px solid rgba(255,255,255,0.08); }
 .site-header-inner { max-width: 1080px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 18px; }
 .site-logo { display: flex; align-items: center; gap: 8px; color: white; text-decoration: none; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.1rem; }
 .slg-ping-sm { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); position: relative; flex-shrink: 0; }
@@ -172,7 +172,7 @@ details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
   .site-cta-btn, .site-link-btn { text-align: center; padding: 10px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; }
 }
 
-.site-footer { background: var(--ink); color: rgba(255,255,255,0.75); margin-top: 60px; }
+#site-footer { background: var(--ink); color: rgba(255,255,255,0.75); margin-top: 60px; }
 .site-footer-inner { max-width: 1080px; margin: 0 auto; padding: 40px 20px 20px; display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between; }
 .site-footer-brand { max-width: 280px; }
 .site-footer-brand strong { color: white; font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; }
