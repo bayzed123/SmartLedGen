@@ -21,17 +21,35 @@
       </div>
     </div>
 
+    <!-- Getting started -->
+    <div class="slg-getting-started" id="gettingStarted">
+      <strong>Getting started — 3 steps</strong>
+      <ol>
+        <li><strong>Add your Google Places API key</strong> below — required, it's what finds real businesses.</li>
+        <li><strong>Optionally</strong> pick an AI provider if you'd rather describe a goal in plain words, or want AI-drafted outreach later.</li>
+        <li><strong>Run a search</strong> — leads show up live below as they're found.</li>
+      </ol>
+    </div>
+
     <!-- API keys -->
     <div class="slg-card">
       <h2>API keys</h2>
       <p class="slg-card-hint">
-        Google Places API key is required — it's the source that actually finds real businesses.
-        The AI provider below is optional: pick one to turn a free-form goal into a search, and
-        later to draft outreach emails. Your keys are encrypted before they're ever stored.
+        Two keys serve two different jobs — see below for which one you actually need.
       </p>
+      <details class="slg-why">
+        <summary>Why two API keys?</summary>
+        <p><strong>Google Places API</strong> is Google's own directory of real businesses — name, address, phone, website, rating. It's the only reliable way to find real leads, which is why it's required. An AI model alone can't do this reliably; it doesn't have a live, verified list of businesses. Note: this is a different Google product from "Maps JavaScript API" (which just displays a map on a page) — when creating your key in Google Cloud, check that <strong>Places API (New)</strong> specifically shows as enabled, not only "Maps."</p>
+        <p><strong>Gemini / OpenAI / Claude (pick one, optional)</strong> doesn't find businesses — it understands plain-English text. Add one only if you'd rather type a goal like "marketing clients in Dhaka with no website" instead of a keyword and location, or want it to draft outreach emails once that feature ships. Skip it entirely if you're happy typing keyword + location yourself.</p>
+      </details>
+      <p class="slg-card-hint" style="margin-top:-4px">Your keys are encrypted before they're ever stored — nobody but this account's jobs can use them.</p>
 
       <label for="placesKey">Google Places API key <span style="color:#8C2E1E">(required)</span></label>
       <input type="password" id="placesKey" placeholder="Paste your Places API (New) key" />
+      <p class="slg-getkey-link">
+        Don't have one? <a href="https://console.cloud.google.com/apis/library/places.googleapis.com" target="_blank" rel="noopener">Enable Places API (New)</a> ·
+        <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">create a key</a>
+      </p>
       <button class="slg-btn-ghost slg-btn" id="savePlacesKey" style="margin-bottom:14px">Save</button>
 
       <label>Optional AI provider (pick one)</label>
@@ -50,6 +68,12 @@
         </div>
       </div>
       <input type="password" id="llmKey" placeholder="Paste the API key for the provider selected above" />
+      <p class="slg-getkey-link">
+        Don't have a key? Get one:
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini</a> ·
+        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a> ·
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Claude</a>
+      </p>
       <button class="slg-btn-ghost slg-btn" id="saveLlmKey">Save</button>
 
       <div id="keysBanner" style="margin-top:14px"></div>
@@ -75,7 +99,7 @@
         </div>
       </div>
 
-      <label for="freeformGoal">Or describe your goal instead (needs an AI provider key above)</label>
+      <label for="freeformGoal">Or describe your goal instead <span style="color:var(--text-soft);font-weight:400">(needs an AI provider key above — skip this box if you didn't add one)</span></label>
       <textarea id="freeformGoal" placeholder="e.g. marketing agency clients in Dhaka with no website"></textarea>
 
       <div class="slg-check">
