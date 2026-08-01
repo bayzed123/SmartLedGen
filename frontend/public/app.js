@@ -3,7 +3,7 @@
 // IMPORTANT: update API_BASE after your first `wrangler deploy` of the
 // worker/ project — it prints the *.workers.dev URL (or your custom
 // domain once you attach one). See worker/README.md.
-const API_BASE = "https://smartleadgen-api.YOUR-SUBDOMAIN.workers.dev";
+const API_BASE = "https://smartleadgen-api.sayadmdbayezidhosan.workers.dev";
 
 // Token storage: localStorage on a real deployed origin (this site's own
 // Cloudflare domain) persists a login across page reloads, which is what
