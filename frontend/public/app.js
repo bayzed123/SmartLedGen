@@ -1,9 +1,9 @@
-// Shared across index.html and dashboard.html.
+// Shared across login.html and dashboard.html.
 //
 // IMPORTANT: update API_BASE after your first `wrangler deploy` of the
 // worker/ project — it prints the *.workers.dev URL (or your custom
 // domain once you attach one). See worker/README.md.
-const API_BASE = "https://smartleadgen-api.sayadmdbayezidhosan.workers.dev";
+const API_BASE = "https://smartleadgen-api.YOUR-SUBDOMAIN.workers.dev";
 
 // Token storage: localStorage on a real deployed origin (this site's own
 // Cloudflare domain) persists a login across page reloads, which is what
@@ -46,10 +46,10 @@ async function apiFetch(path, options = {}) {
 }
 
 function requireLoginOrRedirect() {
-  if (!TokenStore.get()) window.location.href = "/index.html";
+  if (!TokenStore.get()) window.location.href = "/login.html";
 }
 
 function logout() {
   TokenStore.clear();
-  window.location.href = "/index.html";
+  window.location.href = "/login.html";
 }

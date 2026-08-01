@@ -60,3 +60,8 @@ els.submitBtn.addEventListener("click", async () => {
 applyMode();
 // Already signed in? Skip straight to the dashboard.
 if (TokenStore.get()) window.location.href = "/dashboard.html";
+// Arrived via a "Sign up" link from the homepage — open straight into signup mode.
+if (new URLSearchParams(window.location.search).get("signup") === "1") {
+  mode = "signup";
+  applyMode();
+}

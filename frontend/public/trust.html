@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trust Center — SmartLeadGen</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="content-page">
+    <h1>Trust Center</h1>
+    <p>What's actually true about how SmartLeadGen is built and run — not marketing copy.</p>
+
+    <h2>Infrastructure</h2>
+    <p>Runs entirely on Cloudflare Workers, with data stored in Cloudflare D1. All traffic is served over HTTPS.</p>
+
+    <h2>Data isolation</h2>
+    <p>Every stored record — users, API keys, jobs, leads — is scoped to a single account. There is no code path that lets one account query another's data; the only exception is the operator's admin view, used strictly for support and system health, not for reading individual API key values.</p>
+
+    <h2>API key security</h2>
+    <p>Every API key you add is encrypted (AES-256-GCM) before it's written to storage, using a key that never leaves the server. Keys are decrypted only in memory, only at the moment a search or chat needs to call that provider, and are never sent to your browser after the initial save.</p>
+
+    <h2>Passwords</h2>
+    <p>Account passwords are hashed (PBKDF2, 100,000 iterations) — never stored, logged, or visible in plain text, including to us.</p>
+
+    <h2>What we ask of you</h2>
+    <p>Treat your own API keys and account password the way you'd treat any other credential — this product only ever asks for them through its own secure form fields, never through email, chat, or any other channel.</p>
+
+    <h2>Reporting a concern</h2>
+    <p>Found something that doesn't match this page, or a security issue? Email <a href="mailto:support@sayadbayezid.com">support@sayadbayezid.com</a> directly.</p>
+  </main>
+  <div id="site-footer"></div>
+  <script src="/app.js"></script>
+  <script src="/partials.js"></script>
+  <script src="/chatbot.js"></script>
+</body>
+</html>

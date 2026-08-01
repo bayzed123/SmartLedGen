@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>SmartLeadGen — Admin</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="slg-shell">
+    <div class="slg-header">
+      <div class="slg-ping"></div>
+      <div>
+        <p class="slg-title">SmartLeadGen</p>
+        <p class="slg-subtitle">Admin — visible only to you</p>
+      </div>
+      <div class="slg-header-spacer"></div>
+      <div class="slg-header-meta">
+        <div id="userEmail"></div>
+        <button id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div id="accessDenied" class="slg-card" style="display:none">
+      <h2>Not available</h2>
+      <p class="slg-card-hint">This account doesn't have admin access.</p>
+    </div>
+
+    <div id="adminContent" style="display:none">
+      <div class="slg-card">
+        <h2>Overview</h2>
+        <div class="slg-metrics">
+          <div class="slg-metric"><b id="mUsers">0</b><span>Total users</span></div>
+          <div class="slg-metric"><b id="mJobs">0</b><span>Total jobs</span></div>
+          <div class="slg-metric"><b id="mRunning">0</b><span>Running now</span></div>
+          <div class="slg-metric"><b id="mErrors">0</b><span>Errored jobs</span></div>
+        </div>
+      </div>
+
+      <div class="slg-card">
+        <h2>Users</h2>
+        <div class="slg-table-wrap">
+          <table class="slg-table" id="usersTable">
+            <thead><tr><th>Email</th><th>Plan</th><th>Free trial used</th><th>Admin</th><th>Joined</th></tr></thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="slg-card">
+        <h2>Jobs (latest 100)</h2>
+        <div class="slg-table-wrap">
+          <table class="slg-table" id="jobsTable">
+            <thead><tr><th>User</th><th>Keyword</th><th>Location</th><th>Status</th><th>Progress</th><th>Provider</th><th>Created</th></tr></thead>
+            <tbody id="jobsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="slg-footer">SmartLeadGen · Admin view</p>
+  </div>
+
+  <script src="/app.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

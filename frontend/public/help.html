@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Help Center — SmartLeadGen</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="content-page">
+    <h1>Help Center</h1>
+    <p>Stuck on something? Start here — or use the chat bubble in the corner for a quick answer.</p>
+
+    <h2>Getting started</h2>
+    <ul>
+      <li>Sign up, then add your <strong>Google Places API key</strong> (required) — get one via <a href="https://console.cloud.google.com/apis/library/places.googleapis.com" target="_blank" rel="noopener">Google Cloud</a>, making sure "Places API (New)" specifically is enabled.</li>
+      <li>Optionally add one AI provider key (Gemini, OpenAI, or Claude) if you'd rather describe a goal in plain words than type a keyword and location.</li>
+      <li>Run a search — leads appear live as they're found, with a High/Medium/Low opportunity score.</li>
+    </ul>
+
+    <h2>Common errors</h2>
+    <p><strong>"Google rejected this request (403)"</strong> — usually means Places API (New) isn't enabled on your Google Cloud project, or billing isn't enabled on that project. Both are needed even for light usage.</p>
+    <p><strong>"Rate-limited by Google (429)"</strong> — you're calling faster than your project's quota allows. Wait a bit and try again, or raise your quota in Google Cloud.</p>
+    <p><strong>"insufficient_quota" (OpenAI) or "quota exceeded" (Gemini/Claude)</strong> — this is the AI provider's account, not SmartLeadGen. Gemini has a free tier but a low per-minute limit; OpenAI and Claude generally need a payment method added on their own site before any call works.</p>
+    <p><strong>Free trial already used</strong> — one free search per account. After that, paid access is coming — see <a href="/#pricing">Pricing</a>.</p>
+
+    <h2>Exporting your leads</h2>
+    <p>CSV export works immediately, no setup. For Google Sheets: share your Sheet with <strong>support@sayadbayezid.com</strong> as Editor, paste the Sheet URL into the dashboard, then push — a header row is added automatically the first time.</p>
+
+    <h2>Still stuck?</h2>
+    <p>Email <a href="mailto:support@sayadbayezid.com">support@sayadbayezid.com</a> or see <a href="/support.html">Support</a>.</p>
+  </main>
+  <div id="site-footer"></div>
+  <script src="/app.js"></script>
+  <script src="/partials.js"></script>
+  <script src="/chatbot.js"></script>
+</body>
+</html>

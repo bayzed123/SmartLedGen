@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — SmartLeadGen</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="content-page">
+    <h1>Privacy Policy</h1>
+    <p class="content-updated">Plain-English draft — last updated August 2026. This describes how the product actually handles data today; it is not a substitute for formal legal review before commercial launch.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li>Your account email and password (password is hashed, never stored in plain text).</li>
+      <li>API keys you choose to add (Google Places, and optionally Gemini/OpenAI/Claude) — encrypted before being stored, never shown again after you paste them.</li>
+      <li>Leads your searches collect — business names, addresses, phone numbers, and public contact info found on their own websites.</li>
+      <li>A Google Sheet URL, if you choose to connect one.</li>
+    </ul>
+
+    <h2>What we don't do</h2>
+    <ul>
+      <li>We don't share your API keys or leads with other users — every account's data is isolated.</li>
+      <li>We don't sell your data to third parties.</li>
+      <li>CSV exports aren't retained on our servers after you download them.</li>
+    </ul>
+
+    <h2>Who can see what</h2>
+    <p>Only you can see your own leads, keys, and search history. The product's operator can see account-level activity (usage, errors) for support and billing purposes, but not your stored API key values — those stay encrypted.</p>
+
+    <h2>Third parties involved</h2>
+    <p>Searches call Google's Places API using your own key (governed by Google's own privacy terms). If you add an AI provider key, your search text is sent to that provider (Gemini, OpenAI, or Anthropic) using your own key. If you connect Google Sheets, your lead data is written to your own Sheet via a single connected Google account.</p>
+
+    <h2>Your choices</h2>
+    <p>You can delete a stored API key, disconnect your Google Sheet, or ask us to delete your account and its data at any time by emailing <a href="mailto:support@sayadbayezid.com">support@sayadbayezid.com</a>.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes meaningfully, we'll note the update date above and, where practical, notify active users.</p>
+  </main>
+  <div id="site-footer"></div>
+  <script src="/app.js"></script>
+  <script src="/partials.js"></script>
+  <script src="/chatbot.js"></script>
+</body>
+</html>

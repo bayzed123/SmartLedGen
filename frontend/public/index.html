@@ -3,43 +3,101 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SmartLeadGen — Sign in</title>
+<title>SmartLeadGen — Find your next client before they find you</title>
+<meta name="description" content="SmartLeadGen finds real local businesses that need a website, SEO, or marketing help — using your own Google Places API key, with results in minutes." />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="slg-auth-shell">
-    <div class="slg-header">
-      <div class="slg-ping"></div>
-      <div>
-        <p class="slg-title">SmartLeadGen</p>
-        <p class="slg-subtitle">Digital marketing lead radar</p>
+  <div id="site-header"></div>
+
+  <section class="home-hero">
+    <span class="home-hero-eyebrow">🟠 One free search included — no card required</span>
+    <h1>Find your next digital-marketing client before they find you</h1>
+    <p>SmartLeadGen searches real businesses by location and type, flags the ones with a weak (or missing) online presence, and hands you contact details — so your outreach list is ready in minutes, not hours of manual searching.</p>
+    <div class="home-hero-ctas">
+      <a href="/login.html?signup=1" class="home-cta-primary">Try your first search free</a>
+      <a href="#how-it-works" class="home-cta-secondary">See how it works</a>
+    </div>
+  </section>
+
+  <section class="home-section" id="how-it-works">
+    <h2>How it works</h2>
+    <p class="home-section-sub">Three steps, using data sources that actually exist — not guesses from an AI model.</p>
+    <div class="home-steps">
+      <div class="home-step">
+        <span class="home-step-num">01</span>
+        <h3>Tell it what you're looking for</h3>
+        <p>A business type and a location — "dentists in Gulshan" — or describe your goal in plain words and let AI turn it into a search.</p>
+      </div>
+      <div class="home-step">
+        <span class="home-step-num">02</span>
+        <h3>It checks Google's own business directory</h3>
+        <p>Real listings via Google Places API — name, address, phone, rating — then visits each website for a contact email and social links.</p>
+      </div>
+      <div class="home-step">
+        <span class="home-step-num">03</span>
+        <h3>You get a scored, exportable list</h3>
+        <p>Every lead is flagged High/Medium/Low opportunity based on how weak their online presence is. Export to CSV, or push straight to your Google Sheet.</p>
       </div>
     </div>
+  </section>
 
-    <div class="slg-card">
-      <h2 id="formTitle">Sign in</h2>
-      <p class="slg-card-hint" id="formHint">One free run included — no card needed to try it.</p>
-
-      <div id="banner"></div>
-
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="you@example.com" />
-
-      <label for="password">Password</label>
-      <input type="password" id="password" placeholder="At least 8 characters" />
-
-      <button class="slg-btn" id="submitBtn" style="width:100%">Sign in</button>
-
-      <p class="slg-link-row">
-        <span id="toggleHint">New here?</span>
-        <a id="toggleLink">Create an account</a>
-      </p>
+  <section class="home-section">
+    <h2>Built for people who sell websites, SEO, and marketing</h2>
+    <p class="home-section-sub">If your next client is a real business with no website (or a bad one), this finds them.</p>
+    <div class="home-audience">
+      <div class="home-audience-card"><strong>Freelance developers</strong><span>Find businesses with no site at all — the easiest sell.</span></div>
+      <div class="home-audience-card"><strong>SEO consultants</strong><span>Filter by rating and review count to spot who's invisible online.</span></div>
+      <div class="home-audience-card"><strong>Marketing agencies</strong><span>Build a fresh prospect list per city or niche in minutes.</span></div>
     </div>
+  </section>
 
-    <p class="slg-footer">SmartLeadGen · Sayad Md Bayezid Hosan · sayadbayezid.com</p>
-  </div>
+  <section class="home-section home-pricing" id="pricing">
+    <h2>Pricing</h2>
+    <p class="home-section-sub">Still being finalized — we want real usage numbers before setting a fair rate, not a guess.</p>
+    <div class="home-pricing-grid">
+      <div class="home-pricing-card">
+        <div>Right now</div>
+        <div class="price">0<span> / first search</span></div>
+        <p>One full search is free on every account — no card needed. You bring your own Google Places API key (their free tier covers casual use).</p>
+        <a href="/login.html?signup=1" class="home-cta-primary" style="display:inline-block;margin-top:10px">Start free</a>
+      </div>
+    </div>
+    <p class="home-pricing-note">Paid plans will be priced per search volume once running costs are confirmed. Existing free-trial users won't be surprised by it — we'll announce it here first.</p>
+  </section>
+
+  <section class="home-section">
+    <h2>What early users say</h2>
+    <div class="home-review">
+      <p>"Manually checking which local shops had no website used to take me a full afternoon. This gets me a scored list before my coffee's cold."</p>
+      <div class="home-review-who">— Early tester, digital marketing freelancer</div>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <h2>Quick questions</h2>
+    <details class="home-faq-item">
+      <summary>Do I need to know how to code?</summary>
+      <p>No. You'll need a Google Places API key (a free Google Cloud account, a few clicks — we link you straight to it), and that's it.</p>
+    </details>
+    <details class="home-faq-item">
+      <summary>Is my data shared with other users?</summary>
+      <p>No. Every account's leads and API keys are isolated — nobody else can see them, including us, since keys are encrypted before they're stored.</p>
+    </details>
+    <details class="home-faq-item">
+      <summary>What if I don't want to add a Google Sheet?</summary>
+      <p>CSV export works with no setup at all. Google Sheets is an optional convenience for auto-updating a shared sheet.</p>
+    </details>
+    <details class="home-faq-item">
+      <summary>Where can I get more help?</summary>
+      <p>Use the chat bubble in the corner, or visit the <a href="/help.html">Help Center</a>.</p>
+    </details>
+  </section>
+
+  <div id="site-footer"></div>
 
   <script src="/app.js"></script>
-  <script src="/login.js"></script>
+  <script src="/partials.js"></script>
+  <script src="/chatbot.js"></script>
 </body>
 </html>

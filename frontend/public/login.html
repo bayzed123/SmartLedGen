@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartLeadGen — Sign in</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="slg-auth-shell">
+    <p style="text-align:center;margin-bottom:14px"><a href="/" style="color:var(--text-soft);font-size:0.84rem;text-decoration:none">← Back to smartleadgen.com</a></p>
+    <div class="slg-header">
+      <div class="slg-ping"></div>
+      <div>
+        <p class="slg-title">SmartLeadGen</p>
+        <p class="slg-subtitle">Digital marketing lead radar</p>
+      </div>
+    </div>
+
+    <div class="slg-card">
+      <h2 id="formTitle">Sign in</h2>
+      <p class="slg-card-hint" id="formHint">One free run included — no card needed to try it.</p>
+
+      <div id="banner"></div>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="At least 8 characters" />
+
+      <button class="slg-btn" id="submitBtn" style="width:100%">Sign in</button>
+
+      <p class="slg-link-row">
+        <span id="toggleHint">New here?</span>
+        <a id="toggleLink">Create an account</a>
+      </p>
+    </div>
+
+    <p class="slg-footer">SmartLeadGen · Sayad Md Bayezid Hosan · sayadbayezid.com</p>
+  </div>
+
+  <script src="/app.js"></script>
+  <script src="/login.js"></script>
+</body>
+</html>
