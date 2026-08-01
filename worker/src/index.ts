@@ -63,9 +63,13 @@ app.post("/api/keys", requireAuth, async (c) => {
   if (!VALID_PROVIDERS.includes(provider)) return c.json({ error: "Unknown provider." }, 400);
   if (!key?.trim()) return c.json({ error: "Key is required." }, 400);
 
-  const { ciphertext, iv } = await encryptSecret(key.trim(), c.env.ENCRYPTION_KEY);
-  await upsertProviderKey(c.env.DB, user.id, provider, ciphertext, iv);
-  return c.json({ ok: true, provider });
+  try {
+    const { ciphertext, iv } = await encryptSecret(key.trim(), c.env.ENCRYPTION_KEY);
+    await upsertProviderKey(c.env.DB, user.id, provider, ciphertext, iv);
+    return c.json({ ok: true, provider });
+  } catch (e: any) {
+    return c.json({ error: e.message ?? "Couldn't save that key — try again." }, 500);
+  }
 });
 
 app.get("/api/keys", requireAuth, async (c) => {
@@ -204,5 +208,10 @@ async function getProviderKeyOrFail(c: any, provider: "gemini" | "openai" | "ant
   const key = await decryptSecret(row.encrypted_key, row.iv, c.env.ENCRYPTION_KEY);
   return { key };
 }
+
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({ error: err.message || "Something went wrong on the server." }, 500);
+});
 
 export default app;
