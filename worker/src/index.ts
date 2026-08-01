@@ -9,7 +9,7 @@ import {
   getLeadsForJob, markFreeTrialUsed, setSheetConnection, getSheetConnection,
   adminListUsers, adminListJobs,
   submitReview, getApprovedReviews, adminListReviews, setReviewApproved,
-  generateAccessCodes, redeemAccessCode, redeemAccessCodeByEmail, adminListAccessCodes,
+  generateAccessCodes, redeemAccessCode, adminListAccessCodes,
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
@@ -136,27 +136,6 @@ app.post("/api/access-codes/redeem", requireAuth, async (c) => {
 
   c.executionCtx.waitUntil(sendGA4Event(c.env, user.id, "access_code_redeemed", { user_email: user.email }));
   return c.json({ ok: true, plan: "paid" });
-});
-
-// Same idea, for the Streamlit app (no Cloudflare account there — just an
-// email typed into its own gate). Rate-limited per IP so codes can't be
-// brute-forced by guessing.
-app.post("/api/streamlit/verify-code", async (c) => {
-  const ip = c.req.header("CF-Connecting-IP") || "unknown";
-  const rateLimitKey = `coderate:${ip}`;
-  const countStr = await c.env.SESSIONS.get(rateLimitKey);
-  const count = countStr ? parseInt(countStr, 10) : 0;
-  if (count >= 10) return c.json({ error: "Too many attempts — try again in an hour." }, 429);
-  await c.env.SESSIONS.put(rateLimitKey, String(count + 1), { expirationTtl: 3600 });
-
-  const { code, email } = await c.req.json<{ code?: string; email?: string }>();
-  if (!code?.trim() || !email?.trim()) return c.json({ error: "Email and access code are both required." }, 400);
-
-  const ok = await redeemAccessCodeByEmail(c.env.DB, code, email);
-  if (!ok) return c.json({ error: "That code isn't valid, or has already been used." }, 400);
-
-  c.executionCtx.waitUntil(sendGA4Event(c.env, email, "access_code_redeemed", { source: "streamlit", user_email: email }));
-  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------

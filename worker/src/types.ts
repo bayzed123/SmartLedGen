@@ -20,6 +20,8 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REFRESH_TOKEN?: string; // one-time OAuth grant for sayadmdbayezidhosan@gmail.com
   SUPPORT_CHATBOT_API_KEY?: string; // your own Anthropic key — powers the public support chatbot only
+  GA4_MEASUREMENT_ID?: string; // public, e.g. G-K2X859FJZV — fine to hardcode in HTML, not a secret
+  GA4_API_SECRET?: string; // Measurement Protocol secret — server-side only, set via `wrangler secret put`
 }
 
 export interface AuthedUser {
