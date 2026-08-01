@@ -153,11 +153,27 @@
       <div class="slg-row slg-row-2" style="margin-top:18px">
         <a class="slg-btn slg-btn-ghost" id="downloadCsv" style="text-align:center;text-decoration:none;display:none">⬇ Download CSV</a>
         <div>
-          <input type="text" id="sheetUrl" placeholder="Google Sheet URL (share it with support@sayadbayezid.com as Editor first)" />
+          <input type="text" id="sheetUrl" placeholder="Google Sheet URL (share it with sayadmdbayezidhosan@gmail.com as Editor first)" />
           <button class="slg-btn-ghost slg-btn" id="pushSheet" style="width:100%">📤 Push to Google Sheet</button>
         </div>
       </div>
       <div id="exportBanner" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Review -->
+    <div class="slg-card">
+      <h2>Leave a review</h2>
+      <p class="slg-card-hint">Shown on the homepage once approved — helps other agencies and freelancers decide if this is for them.</p>
+      <div class="slg-star-row" id="starRow">
+        <button type="button" data-star="1">★</button>
+        <button type="button" data-star="2">★</button>
+        <button type="button" data-star="3">★</button>
+        <button type="button" data-star="4">★</button>
+        <button type="button" data-star="5">★</button>
+      </div>
+      <textarea id="reviewComment" placeholder="What's working, what isn't — a sentence or two is plenty"></textarea>
+      <button class="slg-btn" id="submitReview">Submit review</button>
+      <div id="reviewBanner" style="margin-top:12px"></div>
     </div>
 
     <p class="slg-footer">SmartLeadGen · Sayad Md Bayezid Hosan · sayadbayezid.com</p>
