@@ -98,7 +98,19 @@ to Claude automatically instead:
 npx wrangler secret put SUPPORT_CHATBOT_API_KEY
 ```
 
-### 4. Deploy
+### 4. GA4 conversion tracking (optional)
+
+The public pages already send pageviews to GA4 via the gtag.js snippet
+(measurement ID is public, already in the HTML). For server-side conversion
+events (access-code redemption), set the Measurement Protocol secret —
+**never put this one in any client-side file or commit it to the repo**:
+
+```bash
+npx wrangler secret put GA4_API_SECRET
+npx wrangler secret put GA4_MEASUREMENT_ID   # same G-XXXX value as the gtag snippet
+```
+
+### 5. Deploy
 
 ```bash
 npx wrangler deploy
@@ -135,6 +147,11 @@ POST /api/admin/reviews/:id/approve  { approved? }   (admin only)
 
 POST /api/reviews              { rating, comment }  (auth) — registered users only
 GET  /api/reviews                                    — public, approved reviews only
+
+POST /api/access-codes/redeem  { code }             (auth) — unlocks unlimited access
+POST /api/streamlit/verify-code { code, email }      — same code pool, for the Streamlit app's own gate
+POST /api/admin/access-codes/generate { count }      (admin only)
+GET  /api/admin/access-codes                         (admin only)
 
 POST /api/support-chat         { message, history? }  — public, rate-limited per IP,
                                                           scoped to product Q&A only

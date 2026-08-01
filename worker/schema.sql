@@ -76,3 +76,29 @@ CREATE TABLE IF NOT EXISTS sheet_connections (
 
 CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_leads_job ON leads(job_id);
+
+-- Submitted only by registered (logged-in) users; shown on the public
+-- homepage only once an admin approves it.
+CREATE TABLE IF NOT EXISTS reviews (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  email TEXT NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT NOT NULL,
+  approved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_approved ON reviews(approved);
+
+-- Manual paid-access gate ahead of real subscription billing — a code
+-- redeemed once sets that account's plan to 'paid' (unlimited access).
+-- redeemed_by_email covers redemptions from the Streamlit app, which has
+-- no Cloudflare account/user_id of its own.
+CREATE TABLE IF NOT EXISTS access_codes (
+  code TEXT PRIMARY KEY,
+  status TEXT NOT NULL DEFAULT 'unused' CHECK (status IN ('unused','redeemed')),
+  redeemed_by_user_id TEXT REFERENCES users(id),
+  redeemed_by_email TEXT,
+  redeemed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
