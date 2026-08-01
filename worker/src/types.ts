@@ -18,6 +18,7 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REFRESH_TOKEN?: string; // one-time OAuth grant for support@sayadbayezid.com
+  SUPPORT_CHATBOT_API_KEY?: string; // your own Anthropic key — powers the public support chatbot only
 }
 
 export interface AuthedUser {

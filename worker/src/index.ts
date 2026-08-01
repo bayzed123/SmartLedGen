@@ -11,7 +11,7 @@ import {
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
-import { parseFreeformGoal } from "./lib/llmProviders";
+import { parseFreeformGoal, callLlm } from "./lib/llmProviders";
 
 type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -41,6 +41,67 @@ app.post("/api/auth/login", async (c) => {
     return c.json({ user, token });
   } catch (e: any) {
     return c.json({ error: e.message }, 401);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Public support chatbot — answers ONLY SmartLeadGen product questions.
+// Uses YOUR OWN key (a Worker secret), not any user's BYOK key, since
+// visitors asking this haven't signed up yet. Rate-limited per IP so one
+// visitor can't run up the API bill.
+// ---------------------------------------------------------------------------
+
+const SUPPORT_SYSTEM_PROMPT = `You are the SmartLeadGen support assistant, embedded on the SmartLeadGen marketing site. Answer ONLY questions about the SmartLeadGen product — what it does, how it works, pricing, signing up, API keys, Google Sheets/CSV export, troubleshooting, and account basics. Keep answers to a few short sentences.
+
+Facts about SmartLeadGen:
+- Finds potential digital-marketing clients by searching Google's Places API (New) for real businesses, then checks each business's own website for a contact email and social links.
+- Requires the user's own Google Places API key (their own Google Cloud project — enable "Places API (New)", their own cost/quota).
+- Optionally uses one AI provider key the user supplies (Gemini, OpenAI, or Claude) to turn a plain-English goal into a search, and — soon — to draft outreach emails. This key is separate from the required Places key and never replaces it.
+- One free search is included per account; paid pricing is still being finalized (not live yet).
+- Leads can be exported as CSV, or pushed to the user's own Google Sheet (they share their Sheet with support@sayadbayezid.com as Editor first).
+- Every user's API keys are encrypted before storage, and each user's data is isolated from other users' — nobody can see another user's leads or keys.
+- Built by Sayad Md Bayezid Hosan (sayadbayezid.com).
+
+If a question is unrelated to SmartLeadGen (general knowledge, other products, personal advice, anything else), say briefly that you can only help with SmartLeadGen questions and point to support@sayadbayezid.com or the Help Center for anything else. Never make up a feature, price, or policy that isn't listed above — say it's not finalized yet instead.`;
+
+app.post("/api/support-chat", async (c) => {
+  const ip = c.req.header("CF-Connecting-IP") || "unknown";
+  const rateLimitKey = `chatrate:${ip}`;
+  const countStr = await c.env.SESSIONS.get(rateLimitKey);
+  const count = countStr ? parseInt(countStr, 10) : 0;
+  if (count >= 20) {
+    return c.json(
+      { error: "Too many questions from this connection for now — try again in an hour, or email support@sayadbayezid.com." },
+      429
+    );
+  }
+
+  const { message, history } = await c.req.json<{
+    message?: string;
+    history?: Array<{ role: string; content: string }>;
+  }>();
+  if (!message?.trim()) return c.json({ error: "Message is required." }, 400);
+  if (message.length > 500) return c.json({ error: "Keep questions under 500 characters." }, 400);
+  if (!c.env.SUPPORT_CHATBOT_API_KEY) {
+    return c.json({ error: "Chat isn't configured yet — email support@sayadbayezid.com instead." }, 503);
+  }
+
+  await c.env.SESSIONS.put(rateLimitKey, String(count + 1), { expirationTtl: 3600 });
+
+  const conversation = (history ?? [])
+    .slice(-6)
+    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+    .join("\n");
+  const prompt = conversation ? `${conversation}\nUser: ${message.trim()}` : message.trim();
+
+  try {
+    const reply = await callLlm("anthropic", c.env.SUPPORT_CHATBOT_API_KEY, prompt, {
+      maxTokens: 300,
+      system: SUPPORT_SYSTEM_PROMPT,
+    });
+    return c.json({ reply: reply.trim() });
+  } catch {
+    return c.json({ error: "Couldn't reach the AI provider right now — try again shortly." }, 502);
   }
 });
 
