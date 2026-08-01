@@ -213,6 +213,8 @@ document.getElementById("pushSheet").addEventListener("click", async () => {
 // Init
 // ---------------------------------------------------------------------------
 
+const AI_PROVIDERS = ["gemini", "openai", "anthropic"];
+
 (async function init() {
   try {
     const me = await apiFetch("/api/me");
@@ -221,8 +223,18 @@ document.getElementById("pushSheet").addEventListener("click", async () => {
 
   try {
     const data = await apiFetch("/api/keys");
+
     if (data.configured.includes("google_places")) {
       document.getElementById("placesKey").placeholder = "Configured ✅ — paste a new key to replace it";
+      document.getElementById("gettingStarted").style.display = "none";
     }
-  } catch { /* not fatal — key section still works, just without the "configured" hint */ }
+
+    const configuredProvider = AI_PROVIDERS.find((p) => data.configured.includes(p));
+    if (configuredProvider) {
+      const opt = document.querySelector(`.slg-provider-opt[data-provider="${configuredProvider}"]`);
+      if (opt) opt.classList.add("selected");
+      selectedProvider = configuredProvider;
+      document.getElementById("llmKey").placeholder = "Configured ✅ — paste a new key to replace it";
+    }
+  } catch { /* not fatal — key section still works, just without the "configured" hints */ }
 })();
