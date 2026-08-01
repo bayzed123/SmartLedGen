@@ -17,6 +17,7 @@ scoring pipeline, same reasoning about why no browser is involved.
   browser-automation one would have been.
 - **Multi-tenant from the start** — every table is scoped by `user_id`
   (see `schema.sql`), so this is no longer "one deployment = one user."
+- Direct links for users setting up their own key: [enable Places API (New)](https://console.cloud.google.com/apis/library/places.googleapis.com) · [create a key](https://console.cloud.google.com/apis/credentials) — both generic, not tied to any specific project, so they work for any user's own Google Cloud project. Same links are already in the dashboard UI next to the key field.
 - **BYOK key storage moves from a Streamlit admin panel into encrypted D1
   rows** (`src/lib/crypto.ts` — AES-GCM, key never stored in plaintext).
 - **Google Sheets moves from a per-user service-account-JSON upload to a
@@ -53,7 +54,9 @@ npx wrangler login          # if this machine isn't already authenticated
 
 ```bash
 # 32 random bytes, base64 — used to encrypt every stored API key
-openssl rand -base64 32 | npx wrangler secret put ENCRYPTION_KEY
+# The `tr -d '\n'` matters: a trailing newline from openssl piped straight
+# into `wrangler secret put` is a common way this ends up silently wrong.
+openssl rand -base64 32 | tr -d '\n' | npx wrangler secret put ENCRYPTION_KEY
 ```
 
 ### 2. Connecting support@sayadbayezid.com for Sheets (one-time, not per-user)
@@ -76,7 +79,20 @@ openssl rand -base64 32 | npx wrangler secret put ENCRYPTION_KEY
 Until this is done, Sheets push returns a clear error and CSV export still
 works — nothing else is blocked by skipping this step for now.
 
-### 3. Deploy
+### 3. Public support chatbot (optional but recommended)
+
+Powers the chat bubble on the public site — answers ONLY SmartLeadGen
+questions (scoped by its own system prompt, not by trusting the visitor).
+Uses your own key, not any user's:
+
+```bash
+npx wrangler secret put SUPPORT_CHATBOT_API_KEY   # your own Anthropic key
+```
+
+Without this set, the chat bubble replies with a "not configured yet, email
+support@" message instead of erroring — nothing else is affected.
+
+### 4. Deploy
 
 ```bash
 npx wrangler deploy
@@ -108,16 +124,22 @@ POST /api/jobs/:id/push-to-sheet                    (auth)
 
 GET  /api/admin/users                               (admin only)
 GET  /api/admin/jobs                                (admin only)
+
+POST /api/support-chat         { message, history? }  — public, rate-limited per IP,
+                                                          scoped to product Q&A only
 ```
 
 Every `(auth)` route expects `Authorization: Bearer <token>` from login/signup.
 
 ## Not in this phase
 
-Per the phased roadmap — these are Phase 2+, not missing-by-accident:
-- Frontend (public site, user dashboard, admin dashboard, animation/motion)
+Per the phased roadmap — these are still ahead, not missing-by-accident:
+- Google OAuth login (email/password works now; "Log in with Google" is a
+  reasonable next addition, deliberately deferred this round given everything
+  else in flight — flag if you want it prioritized next)
 - Email-marketing automation module
-- PDF export (CSV is the Phase 1 export path)
+- PDF export (CSV is the export path for now)
+- Figma-sourced motion/animation polish pass
 - Cloudflare Queues (only needed once real job volume makes the current
   single-invocation `runJob` loop bump into execution-time limits)
 
