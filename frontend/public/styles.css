@@ -125,6 +125,23 @@ table.slg-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); wh
 
 .slg-footer { text-align: center; font-size: 0.78rem; color: var(--text-soft); margin-top: 30px; }
 
+.slg-getting-started {
+  background: rgba(232,163,61,0.14); border: 1px solid rgba(232,163,61,0.45);
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.86rem;
+}
+.slg-getting-started strong { display: block; margin-bottom: 6px; font-family: 'Space Grotesk', sans-serif; }
+.slg-getting-started ol { margin: 0; padding-left: 20px; }
+.slg-getting-started li { margin-bottom: 4px; }
+
+details.slg-why { margin: 6px 0 4px; font-size: 0.86rem; }
+details.slg-why summary { cursor: pointer; font-weight: 600; color: var(--teal); }
+details.slg-why summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
+
+.slg-getkey-link { font-size: 0.8rem; color: var(--text-soft); margin: -8px 0 12px; }
+.slg-getkey-link a { color: var(--teal); font-weight: 600; text-decoration: none; }
+.slg-getkey-link a:hover { text-decoration: underline; }
+
 @media (prefers-reduced-motion: reduce) {
   .slg-ping::after { animation: none; }
   button.slg-btn, .slg-progress-fill { transition: none; }
