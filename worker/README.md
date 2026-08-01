@@ -79,18 +79,24 @@ openssl rand -base64 32 | tr -d '\n' | npx wrangler secret put ENCRYPTION_KEY
 Until this is done, Sheets push returns a clear error and CSV export still
 works — nothing else is blocked by skipping this step for now.
 
-### 3. Public support chatbot (optional but recommended)
+### 3. Public support chatbot — works with no setup
 
 Powers the chat bubble on the public site — answers ONLY SmartLeadGen
 questions (scoped by its own system prompt, not by trusting the visitor).
-Uses your own key, not any user's:
+
+By default it runs on **Workers AI** (Llama 3.1 8B) — free, no external
+account or API key, already wired up via the `ai` binding in
+`wrangler.jsonc`. Nothing to configure; it works right after `wrangler deploy`.
+Free-plan accounts get 10,000 neurons/day, which is plenty for a support
+widget's traffic.
+
+Optional upgrade later, if Llama's answers feel too rough: set
+`SUPPORT_CHATBOT_API_KEY` (your own Anthropic key) and the endpoint switches
+to Claude automatically instead:
 
 ```bash
-npx wrangler secret put SUPPORT_CHATBOT_API_KEY   # your own Anthropic key
+npx wrangler secret put SUPPORT_CHATBOT_API_KEY
 ```
-
-Without this set, the chat bubble replies with a "not configured yet, email
-support@" message instead of erroring — nothing else is affected.
 
 ### 4. Deploy
 

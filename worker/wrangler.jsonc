@@ -25,6 +25,12 @@
     }
   ],
 
+  // Free, no-API-key-needed model access (Llama, Mistral, etc.) — powers the
+  // support chatbot by default. 10,000 neurons/day free on the Workers Free plan.
+  "ai": {
+    "binding": "AI"
+  },
+
   // Vars are fine to be public. Real secrets (ENCRYPTION_KEY, GOOGLE_CLIENT_ID,
   // GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN) are set with `wrangler secret put`
   // instead — see README — never written here, never committed to GitHub.
