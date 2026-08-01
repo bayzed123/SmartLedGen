@@ -239,26 +239,13 @@ export async function redeemAccessCode(db: D1Database, code: string, userId: str
   return ok;
 }
 
-/** Same idea, for the Streamlit app — which has no Cloudflare account/user_id,
- *  just an email typed into the gate. Shares the same code pool. */
-export async function redeemAccessCodeByEmail(db: D1Database, code: string, email: string): Promise<boolean> {
-  const result = await db
-    .prepare(
-      `UPDATE access_codes SET status = 'redeemed', redeemed_by_email = ?, redeemed_at = datetime('now')
-       WHERE code = ? AND status = 'unused'`
-    )
-    .bind(email.trim(), code.trim())
-    .run();
-  return (result.meta.changes ?? 0) > 0;
-}
-
 export async function adminListAccessCodes(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT access_codes.*, users.email AS user_email FROM access_codes
+      `SELECT access_codes.*, users.email AS redeemed_by_email FROM access_codes
        LEFT JOIN users ON users.id = access_codes.redeemed_by_user_id
        ORDER BY access_codes.created_at DESC`
     )
     .all();
-  return results.map((r: any) => ({ ...r, redeemed_by_email: r.user_email || r.redeemed_by_email }));
+  return results;
 }
