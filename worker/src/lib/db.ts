@@ -207,3 +207,58 @@ export async function adminListReviews(db: D1Database) {
 export async function setReviewApproved(db: D1Database, reviewId: string, approved: boolean) {
   await db.prepare(`UPDATE reviews SET approved = ? WHERE id = ?`).bind(approved ? 1 : 0, reviewId).run();
 }
+
+// ---------------------------------------------------------------------------
+// Access codes — a manual paid-access gate ahead of real subscription billing.
+// A code redeemed once unlocks unlimited access for that account.
+// ---------------------------------------------------------------------------
+
+export async function generateAccessCodes(db: D1Database, count: number): Promise<string[]> {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789#@$";
+  const codes: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(15));
+    const suffix = Array.from(bytes, (b) => charset[b % charset.length]).join("");
+    const code = `SMARTGENTOOLS-${suffix}`;
+    await db.prepare(`INSERT INTO access_codes (code) VALUES (?)`).bind(code).run();
+    codes.push(code);
+  }
+  return codes;
+}
+
+export async function redeemAccessCode(db: D1Database, code: string, userId: string): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE access_codes SET status = 'redeemed', redeemed_by_user_id = ?, redeemed_at = datetime('now')
+       WHERE code = ? AND status = 'unused'`
+    )
+    .bind(userId, code.trim())
+    .run();
+  const ok = (result.meta.changes ?? 0) > 0;
+  if (ok) await db.prepare(`UPDATE users SET plan = 'paid' WHERE id = ?`).bind(userId).run();
+  return ok;
+}
+
+/** Same idea, for the Streamlit app — which has no Cloudflare account/user_id,
+ *  just an email typed into the gate. Shares the same code pool. */
+export async function redeemAccessCodeByEmail(db: D1Database, code: string, email: string): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE access_codes SET status = 'redeemed', redeemed_by_email = ?, redeemed_at = datetime('now')
+       WHERE code = ? AND status = 'unused'`
+    )
+    .bind(email.trim(), code.trim())
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
+export async function adminListAccessCodes(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT access_codes.*, users.email AS user_email FROM access_codes
+       LEFT JOIN users ON users.id = access_codes.redeemed_by_user_id
+       ORDER BY access_codes.created_at DESC`
+    )
+    .all();
+  return results.map((r: any) => ({ ...r, redeemed_by_email: r.user_email || r.redeemed_by_email }));
+}
