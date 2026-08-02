@@ -239,13 +239,37 @@ export async function redeemAccessCode(db: D1Database, code: string, userId: str
   return ok;
 }
 
+/** Same idea, for the Streamlit app — which has no Cloudflare account/user_id,
+ *  just an email typed into the gate. Shares the same code pool.
+ *
+ *  Unlike the Cloudflare flow, this does NOT mark the code single-use.
+ *  Streamlit has no persistent login — its session resets on every page
+ *  reload, new tab, and every auto-redeploy (which happens on every git
+ *  push). If a code stopped working after the first use, a real customer
+ *  would get locked out the very next time they revisited the app. The
+ *  code itself has to work as their ongoing "password" here — so it stays
+ *  valid on repeat entry. redeemed_at/redeemed_by_email are updated each
+ *  time so the admin view still shows who's using which code and when it
+ *  was last used. To cut off a specific customer (leaked code, etc.),
+ *  delete that row from access_codes — there's no separate "revoke" yet. */
+export async function redeemAccessCodeByEmail(db: D1Database, code: string, email: string): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `UPDATE access_codes SET status = 'redeemed', redeemed_by_email = ?, redeemed_at = datetime('now')
+       WHERE code = ?`
+    )
+    .bind(email.trim(), code.trim())
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
 export async function adminListAccessCodes(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT access_codes.*, users.email AS redeemed_by_email FROM access_codes
+      `SELECT access_codes.*, users.email AS user_email FROM access_codes
        LEFT JOIN users ON users.id = access_codes.redeemed_by_user_id
        ORDER BY access_codes.created_at DESC`
     )
     .all();
-  return results;
+  return results.map((r: any) => ({ ...r, redeemed_by_email: r.user_email || r.redeemed_by_email }));
 }
