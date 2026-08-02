@@ -13,7 +13,13 @@ import type { EnrichmentResult } from "../types";
 
 const USER_AGENT = "SmartLeadGenBot/1.0 (business research; see website owner for contact)";
 const TIMEOUT_MS = 8000;
-const CONTACT_HINTS = ["contact", "contact-us", "about", "about-us", "get-in-touch"];
+const CONTACT_HINTS = [
+  "contact", "contact-us", "contactus", "about", "about-us", "aboutus",
+  "get-in-touch", "reach-us", "reach", "connect", "enquiry", "inquiry", "support",
+];
+// Tried as direct URL guesses when no matching link was found on the homepage —
+// some sites have a working contact page that isn't linked with matching anchor text.
+const GUESSED_CONTACT_PATHS = ["/contact", "/contact-us", "/about", "/about-us"];
 
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const SOCIAL_PATTERNS: Record<string, RegExp> = {
@@ -25,6 +31,15 @@ const JUNK_EMAIL_SNIPPETS = [
   "example.com", "yourdomain", "domain.com", "sentry.io",
   "wixpress.com", "godaddy.com", ".png", ".jpg", ".jpeg", ".gif", ".svg",
 ];
+
+/** Undoes common scraper-evasion tricks like "info [at] example [dot] com"
+ *  before the email regex runs — cheap to do, catches a real slice of sites
+ *  that would otherwise show up as "no email found". */
+function deobfuscate(html: string): string {
+  return html
+    .replace(/\s*[[(]\s*at\s*[\])]\s*/gi, "@")
+    .replace(/\s*[[(]\s*dot\s*[\])]\s*/gi, ".");
+}
 
 function withTimeout(ms: number): AbortSignal {
   const controller = new AbortController();
@@ -72,7 +87,8 @@ function cleanEmail(addr: string): string | null {
 
 function extractEmails(html: string): Set<string> {
   const found = new Set<string>();
-  for (const match of html.matchAll(EMAIL_PATTERN)) {
+  const normalized = deobfuscate(html);
+  for (const match of normalized.matchAll(EMAIL_PATTERN)) {
     const cleaned = cleanEmail(match[0]);
     if (cleaned) found.add(cleaned);
   }
@@ -121,15 +137,38 @@ export async function enrichWebsite(rawUrl: string): Promise<EnrichmentResult> {
 
   const emails = extractEmails(homepageHtml);
   const socials = extractSocials(homepageHtml);
+  const triedUrls = new Set([url]);
 
   const contactUrl = findContactPage(url, homepageHtml);
-  if (contactUrl && contactUrl !== url) {
+  if (contactUrl && !triedUrls.has(contactUrl)) {
+    triedUrls.add(contactUrl);
     await new Promise((r) => setTimeout(r, 1000)); // polite delay, same domain
     const contactHtml = await fetchText(contactUrl);
     if (contactHtml) {
       for (const e of extractEmails(contactHtml)) emails.add(e);
       for (const [platform, link] of Object.entries(extractSocials(contactHtml))) {
         if (!socials[platform]) socials[platform] = link;
+      }
+    }
+  }
+
+  // Still nothing? Try a couple of conventional contact-page paths directly —
+  // catches sites where the link exists but isn't discoverable from anchor text
+  // (icon-only nav, JS-rendered menu, etc). Capped at 2 to keep this bounded.
+  if (emails.size === 0) {
+    const origin = new URL(url).origin;
+    for (const path of GUESSED_CONTACT_PATHS.slice(0, 2)) {
+      const guessUrl = origin + path;
+      if (triedUrls.has(guessUrl)) continue;
+      triedUrls.add(guessUrl);
+      await new Promise((r) => setTimeout(r, 1000));
+      const guessHtml = await fetchText(guessUrl);
+      if (guessHtml) {
+        for (const e of extractEmails(guessHtml)) emails.add(e);
+        for (const [platform, link] of Object.entries(extractSocials(guessHtml))) {
+          if (!socials[platform]) socials[platform] = link;
+        }
+        if (emails.size > 0) break; // found one — no need to try the next guess
       }
     }
   }
