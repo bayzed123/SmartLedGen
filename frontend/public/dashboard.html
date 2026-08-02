@@ -117,8 +117,13 @@
         </div>
       </div>
 
-      <label for="freeformGoal">Or describe your goal instead <span style="color:var(--text-soft);font-weight:400">(needs an AI provider key above — skip this box if you didn't add one)</span></label>
-      <textarea id="freeformGoal" placeholder="e.g. marketing agency clients in Dhaka with no website"></textarea>
+      <div class="slg-check" style="margin-top:10px">
+        <input type="checkbox" id="useFreeformGoal" />
+        <label for="useFreeformGoal">Instead of keyword + location, describe the search in plain English using AI (needs a provider key above)</label>
+      </div>
+      <label for="freeformGoal" style="margin-top:6px">Or describe your search goal <span style="color:var(--text-soft);font-weight:400">— only used when the checkbox above is on; otherwise ignored even if it has text</span></label>
+      <p id="activeProviderNote" style="margin:-6px 0 8px;font-size:.9em;color:var(--text-soft)"></p>
+      <textarea id="freeformGoal" placeholder="e.g. marketing agency clients in Dhaka with no website" disabled></textarea>
 
       <div class="slg-check">
         <input type="checkbox" id="runEnrichment" checked />
