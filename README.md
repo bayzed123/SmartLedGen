@@ -1,9 +1,4 @@
 # SmartLeadGen
-Read If You want build Beta [README-streamlit.md](README-streamlit.md)
-
-Live Demu [Smart Lead Genarator (Pro)](https://smartleadgen-frontend.sayadmdbayezidhosan.workers.dev)
-
-Live Demu [Smart Lead Genarator (Beta)](https://smartledgen-d2l3wnvtlt4siv2quddtpf.streamlit.app)
 
 Finds real local businesses that could use a website, SEO, or marketing help — searches Google's own Places data, checks each business's own site for a contact email, and scores how strong (or weak) their online presence already is.
 

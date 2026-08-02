@@ -90,8 +90,39 @@ st.markdown(
 # Access gate — shares the same access-code pool as the Cloudflare version
 # (same backend, /api/streamlit/verify-code). No Cloudflare account needed
 # here — just an email + the code.
+#
+# Remembered via URL query params, not just session_state: session_state
+# resets on every reload/new tab/redeploy, which meant re-typing the email
+# and code constantly. Once unlocked, the same values are written into the
+# page URL — reopening that same link skips the form automatically. Use
+# "Switch account" (in Admin settings, once unlocked) to clear it and log
+# in as someone else on the same device.
 # --------------------------------------------------------------------------
 CLOUDFLARE_API_BASE = "https://smartleadgen-api.sayadmdbayezidhosan.workers.dev"
+
+
+def attempt_verify(email: str, code: str) -> bool:
+    try:
+        resp = requests.post(
+            f"{CLOUDFLARE_API_BASE}/api/streamlit/verify-code",
+            json={"code": code, "email": email},
+            timeout=10,
+        )
+        return resp.ok
+    except Exception:
+        return False
+
+
+if not st.session_state.get("access_unlocked", False):
+    qp_email = st.query_params.get("email", "")
+    qp_code = st.query_params.get("code", "")
+    if qp_email and qp_code and not st.session_state.get("auto_unlock_tried", False):
+        st.session_state.auto_unlock_tried = True
+        if attempt_verify(qp_email, qp_code):
+            st.session_state.access_unlocked = True
+            st.session_state.verified_email = qp_email
+            st.session_state.verified_code = qp_code
+            st.rerun()
 
 if not st.session_state.get("access_unlocked", False):
     st.markdown("### 🔒 Enter your access code")
@@ -110,6 +141,15 @@ if not st.session_state.get("access_unlocked", False):
                 )
                 if resp.ok:
                     st.session_state.access_unlocked = True
+                    # Kept for the rest of this session so save/load of this
+                    # person's OWN config (Places key, Sheet, service account)
+                    # can be tied to them specifically — not a shared secret.
+                    st.session_state.verified_email = gate_email.strip()
+                    st.session_state.verified_code = gate_code.strip()
+                    # Remembered in the URL — reopening this same link later
+                    # skips this form; no need to re-enter every time.
+                    st.query_params["email"] = gate_email.strip()
+                    st.query_params["code"] = gate_code.strip()
                     st.rerun()
                 else:
                     try:
@@ -120,6 +160,53 @@ if not st.session_state.get("access_unlocked", False):
             except Exception as e:
                 st.error(f"Couldn't verify the code right now — check your connection and try again. ({e})")
     st.stop()
+
+# --------------------------------------------------------------------------
+# Load this person's own saved config (their Places key, Sheet, service
+# account) once per session, right after the gate — so it survives a
+# session reset instead of needing to be re-entered every time. Saved
+# per-email in Cloudflare D1, NOT a shared Streamlit Cloud secret — see
+# save_streamlit_config() below for why that distinction matters.
+# --------------------------------------------------------------------------
+st.session_state.setdefault("runtime_config", {})  # also set later below; safe either way, needed here first
+
+if not st.session_state.get("remote_config_loaded", False):
+    try:
+        resp = requests.get(
+            f"{CLOUDFLARE_API_BASE}/api/streamlit/config",
+            params={"email": st.session_state.verified_email, "code": st.session_state.verified_code},
+            timeout=10,
+        )
+        if resp.ok:
+            remote = resp.json()
+            if remote.get("googlePlacesKey"):
+                st.session_state.runtime_config["GOOGLE_PLACES_API_KEY"] = remote["googlePlacesKey"]
+            if remote.get("sheetUrl"):
+                st.session_state.runtime_config["GOOGLE_SHEET_URL"] = remote["sheetUrl"]
+            if remote.get("serviceAccountJson"):
+                st.session_state.runtime_config["GOOGLE_SERVICE_ACCOUNT_JSON"] = remote["serviceAccountJson"]
+    except Exception:
+        pass  # not fatal — the admin panel still works, just starts blank this session
+    st.session_state.remote_config_loaded = True
+
+
+def save_streamlit_config(**fields):
+    """Pushes whichever of googlePlacesKey / sheetUrl / serviceAccountJson
+    changed to Cloudflare D1, keyed by this person's own email — so it's
+    THEIR key being billed for THEIR searches, not shared with every other
+    visitor the way a Streamlit Cloud app-level Secret would be."""
+    try:
+        requests.post(
+            f"{CLOUDFLARE_API_BASE}/api/streamlit/save-config",
+            json={
+                "email": st.session_state.verified_email,
+                "code": st.session_state.verified_code,
+                **fields,
+            },
+            timeout=10,
+        )
+    except Exception:
+        pass  # saved for this session either way via runtime_config; remote save is best-effort
 
 # --------------------------------------------------------------------------
 # Session state
@@ -161,6 +248,7 @@ with st.expander("⚙️  Admin — API & Sheet settings", expanded=False):
         )
         if places_input:
             st.session_state.runtime_config["GOOGLE_PLACES_API_KEY"] = places_input
+            save_streamlit_config(googlePlacesKey=places_input)
 
         hunter_configured = bool(get_secret("HUNTER_API_KEY"))
         hunter_input = st.text_input(
@@ -180,6 +268,7 @@ with st.expander("⚙️  Admin — API & Sheet settings", expanded=False):
         )
         if sheet_url_input:
             st.session_state.runtime_config["GOOGLE_SHEET_URL"] = sheet_url_input
+            save_streamlit_config(sheetUrl=sheet_url_input)
 
         sa_configured = bool(get_secret("GOOGLE_SERVICE_ACCOUNT_JSON"))
         sa_file = st.file_uploader(
@@ -187,7 +276,9 @@ with st.expander("⚙️  Admin — API & Sheet settings", expanded=False):
             type=["json"],
         )
         if sa_file is not None:
-            st.session_state.runtime_config["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_file.read().decode("utf-8")
+            sa_json_text = sa_file.read().decode("utf-8")
+            st.session_state.runtime_config["GOOGLE_SERVICE_ACCOUNT_JSON"] = sa_json_text
+            save_streamlit_config(serviceAccountJson=sa_json_text)
 
     default_region = st.selectbox(
         "Default phone region (used only when a number has no country code)",
@@ -200,6 +291,14 @@ with st.expander("⚙️  Admin — API & Sheet settings", expanded=False):
     status_cols[0].metric("Places API", "Ready ✅" if get_secret("GOOGLE_PLACES_API_KEY") else "Not set ⚠️")
     status_cols[1].metric("Google Sheet", "Ready ✅" if get_secret("GOOGLE_SHEET_URL") else "Not set ⚠️")
     status_cols[2].metric("Service account", "Ready ✅" if get_secret("GOOGLE_SERVICE_ACCOUNT_JSON") else "Not set ⚠️")
+
+    st.divider()
+    st.caption(f"Signed in as **{st.session_state.get('verified_email', '')}**.")
+    if st.button("🔁 Switch account"):
+        st.query_params.clear()
+        for key in ("access_unlocked", "verified_email", "verified_code", "auto_unlock_tried", "remote_config_loaded"):
+            st.session_state.pop(key, None)
+        st.rerun()
 
 # --------------------------------------------------------------------------
 # Search form
@@ -271,8 +370,8 @@ if start_clicked:
                     "Facebook": socials.get("facebook", ""),
                     "Instagram": socials.get("instagram", ""),
                     "LinkedIn": socials.get("linkedin", ""),
-                    "Rating": place.get("rating", ""),
-                    "Reviews": place.get("userRatingCount", ""),
+                    "Rating": place.get("rating"),
+                    "Reviews": place.get("userRatingCount"),
                     "Lead Score": f"{LEAD_SCORE_EMOJI[lead_score]} {lead_score}",
                     "Google Maps Link": place.get("googleMapsUri", ""),
                     "Date Collected": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -281,7 +380,7 @@ if start_clicked:
                 st.session_state.leads.append(row)
                 new_rows.append(row)
 
-                table_placeholder.dataframe(pd.DataFrame(st.session_state.leads), use_container_width=True, height=420)
+                table_placeholder.dataframe(pd.DataFrame(st.session_state.leads), width="stretch", height=420)
 
             status_placeholder.success(f"Done — {len(new_rows)} new lead(s) added this run "
                                         f"({total_target - len(new_rows)} skipped as duplicates/invalid).")
@@ -326,7 +425,7 @@ if st.session_state.leads:
     metric_cols[2].metric("With email", int((df["Email"] != "").sum()))
     metric_cols[3].metric("With phone", int((df["Phone"] != "").sum()))
 
-    st.dataframe(df, use_container_width=True, height=420)
+    st.dataframe(df, width="stretch", height=420)
 
     csv_bytes = df.to_csv(index=False).encode("utf-8-sig")  # -sig so Excel shows non-English names correctly
     dl_col, sheet_col, clear_col = st.columns(3)
@@ -336,10 +435,10 @@ if st.session_state.leads:
             data=csv_bytes,
             file_name=f"smartleadgen_leads_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
     with sheet_col:
-        if st.button("📤 Push all to Google Sheets now", use_container_width=True):
+        if st.button("📤 Push all to Google Sheets now", width="stretch"):
             sheet_url = get_secret("GOOGLE_SHEET_URL")
             sa_json_str = get_secret("GOOGLE_SERVICE_ACCOUNT_JSON")
             if not (sheet_url and sa_json_str):
@@ -354,7 +453,7 @@ if st.session_state.leads:
                 except (SheetsWriterError, json.JSONDecodeError) as e:
                     st.error(f"Google Sheets push failed: {e}")
     with clear_col:
-        if st.button("🗑 Clear session results", use_container_width=True):
+        if st.button("🗑 Clear session results", width="stretch"):
             st.session_state.leads = []
             st.session_state.dedup_keys = set()
             st.rerun()
