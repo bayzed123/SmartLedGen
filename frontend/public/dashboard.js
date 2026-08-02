@@ -29,11 +29,18 @@ document.getElementById("savePlacesKey").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("useFreeformGoal").addEventListener("change", (e) => {
+  const box = document.getElementById("freeformGoal");
+  box.disabled = !e.target.checked;
+  if (!e.target.checked) box.value = "";
+});
+
 document.querySelectorAll(".slg-provider-opt").forEach((opt) => {
   opt.addEventListener("click", () => {
     document.querySelectorAll(".slg-provider-opt").forEach((o) => o.classList.remove("selected"));
     opt.classList.add("selected");
     selectedProvider = opt.dataset.provider;
+    document.getElementById("activeProviderNote").textContent = `Active for "describe your goal": ${selectedProvider}`;
   });
 });
 
@@ -59,12 +66,13 @@ document.getElementById("startBtn").addEventListener("click", async () => {
   const location = document.getElementById("location").value.trim();
   const maxResults = Number(document.getElementById("maxResults").value) || 20;
   const runEnrichment = document.getElementById("runEnrichment").checked;
-  const freeformGoal = document.getElementById("freeformGoal").value.trim();
+  const useFreeform = document.getElementById("useFreeformGoal").checked;
+  const freeformGoal = useFreeform ? document.getElementById("freeformGoal").value.trim() : "";
 
-  if (!keyword && !freeformGoal) return banner("searchBanner", "Enter a keyword, or describe a goal below it.", "warn");
+  if (!keyword && !freeformGoal) return banner("searchBanner", "Enter a keyword, or turn on the AI-goal checkbox and describe one.", "warn");
 
   const payload = { maxResults, runEnrichment };
-  if (freeformGoal) {
+  if (useFreeform && freeformGoal) {
     if (!selectedProvider) return banner("searchBanner", "Describing a goal needs an AI provider picked above first.", "warn");
     payload.freeformGoal = freeformGoal;
     payload.llmProvider = selectedProvider;
@@ -132,8 +140,6 @@ function renderJob(job, leads) {
   document.getElementById("progressText").textContent = `${job.progress_current} / ${job.progress_total}`;
 
   if (job.status === "error") {
-    // Distinguish "you hit a provider's rate limit" from a generic failure —
-    // the "warning when API limited" requirement.
     const isRateLimit = /rate.?limit|429|quota/i.test(job.error_message || "");
     banner("searchBanner", job.error_message || "The job failed.", isRateLimit ? "warn" : "error");
   } else if (job.status === "done") {
@@ -167,7 +173,6 @@ function renderLeads(leads) {
     const dl = document.getElementById("downloadCsv");
     dl.style.display = "inline-block";
     dl.href = `${API_BASE}/api/jobs/${currentJobId}/export.csv`;
-    // Auth needed — a plain link can't send the Bearer header, so intercept the click.
     dl.onclick = async (e) => {
       e.preventDefault();
       const token = TokenStore.get();
@@ -279,8 +284,7 @@ const AI_PROVIDERS = ["gemini", "openai", "anthropic"];
     const configuredProvider = AI_PROVIDERS.find((p) => data.configured.includes(p));
     if (configuredProvider) {
       const opt = document.querySelector(`.slg-provider-opt[data-provider="${configuredProvider}"]`);
-      if (opt) opt.classList.add("selected");
-      selectedProvider = configuredProvider;
+      if (opt) opt.querySelector("span").textContent += " (key already saved — click to use it)";
       document.getElementById("llmKey").placeholder = "Configured ✅ — paste a new key to replace it";
     }
   } catch { /* not fatal — key section still works, just without the "configured" hints */ }
