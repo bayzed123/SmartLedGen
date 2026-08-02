@@ -57,8 +57,23 @@ function renderCodes(codes) {
       <td>${code.status === "redeemed" ? "✅ Redeemed" : "⏳ Unused"}</td>
       <td>${escapeHtml(code.redeemed_by_email || "—")}</td>
       <td>${escapeHtml(code.created_at)}</td>
+      <td>${code.status === "redeemed" ? `<button class="slg-btn-ghost slg-btn resetCodeBtn" data-code="${escapeHtml(code.code)}">Reset</button>` : ""}</td>
     </tr>
   `).join("");
+
+  document.querySelectorAll(".resetCodeBtn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await apiFetch("/api/admin/access-codes/reset", { method: "POST", body: JSON.stringify({ code: btn.dataset.code }) });
+        const { codes: all } = await apiFetch("/api/admin/access-codes");
+        renderCodes(all);
+      } catch (err) {
+        btn.disabled = false;
+        alert(err.message);
+      }
+    });
+  });
 }
 
 function renderUsers(users) {
