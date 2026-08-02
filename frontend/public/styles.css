@@ -142,6 +142,10 @@ details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
 .slg-getkey-link a { color: var(--teal); font-weight: 600; text-decoration: none; }
 .slg-getkey-link a:hover { text-decoration: underline; }
 
+.slg-star-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.slg-star-row button { background: none; border: none; font-size: 1.6rem; color: var(--line); cursor: pointer; padding: 0; line-height: 1; }
+.slg-star-row button.selected, .slg-star-row button:hover, .slg-star-row button:hover ~ button { color: var(--amber); }
+
 /* ===================== Site chrome (public pages) ===================== */
 
 #site-header { position: sticky; top: 0; z-index: 40; background: var(--ink); border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -219,6 +223,18 @@ details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
 .home-pricing-card .price { font-family: 'Space Grotesk', sans-serif; font-size: 2.6rem; font-weight: 700; margin: 10px 0; }
 .home-pricing-card .price span { font-size: 1rem; color: var(--text-soft); font-weight: 400; }
 .home-pricing-note { font-size: 0.86rem; color: var(--text-soft); margin-top: 14px; }
+.home-pricing-alt { font-size: 0.85rem; color: var(--text-soft); margin: -6px 0 8px; }
+
+.payment-panel { max-width: 760px; margin: 40px auto 0; padding-top: 32px; border-top: 1px solid rgba(0,0,0,0.08); }
+.payment-panel h3 { display: flex; align-items: center; }
+.payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.payment-card { background: white; border: 1px solid rgba(0,0,0,0.1); border-radius: var(--radius); padding: 16px; }
+.payment-card-label { font-weight: 700; font-size: 0.92rem; margin-bottom: 6px; }
+.payment-value { font-size: 1rem; letter-spacing: 0.5px; color: var(--text-soft); margin-bottom: 10px; }
+.payment-copy-btn { border: 1px solid var(--teal); background: none; color: var(--teal); border-radius: 6px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 0.86rem; }
+.payment-copy-btn.copied { background: var(--teal); color: white; }
+.payment-guide { font-size: 0.82rem; color: var(--text-soft); margin: 8px 0 0; }
+@media (max-width: 600px) { .payment-grid { grid-template-columns: 1fr; } }
 
 .home-review { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; max-width: 640px; margin: 0 auto; }
 .home-review p { font-style: italic; color: var(--ink); }
