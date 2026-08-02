@@ -34,8 +34,8 @@ export function pickPrimaryType(typesList?: string[]): string {
 /** The "smart" part of SmartLeadGen: how promising a lead is for a
  *  digital marketing agency specifically. No website is the strongest
  *  signal; weak online presence is next. */
-export function scoreLead(place: PlaceResult, enrichment: EnrichmentResult): "High" | "Medium" | "Low" {
-  const hasWebsite = Boolean(place.websiteUri);
+export function scoreLead(place: PlaceResult, enrichment: EnrichmentResult, isFacebookOnly = false): "High" | "Medium" | "Low" {
+  const hasWebsite = Boolean(place.websiteUri) && !isFacebookOnly;
   const rating = place.rating;
   const reviewCount = place.userRatingCount ?? 0;
 

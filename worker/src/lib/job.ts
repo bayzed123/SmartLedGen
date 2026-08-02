@@ -56,11 +56,18 @@ export async function runJob(env: Env, jobId: string, userId: string) {
       const { e164 } = normalizePhone(rawPhone, "BD");
 
       const website = place.websiteUri ?? "";
-      const enrichment = job.run_enrichment && website
+      // When Google's only "website" for a business is actually their Facebook
+      // page, trying to fetch() it for enrichment is pointless — Facebook
+      // requires login for real content, so it'd just hit a wall and burn the
+      // timeout. Record it directly as their Facebook link instead.
+      const isFacebookOnly = /facebook\.com/i.test(website);
+      const enrichment = isFacebookOnly
+        ? { email: null, socials: { facebook: website } as Record<string, string> }
+        : job.run_enrichment && website
         ? await enrichWebsite(website)
         : { email: null, socials: {} as Record<string, string> };
 
-      const leadScore = scoreLead(place, enrichment);
+      const leadScore = scoreLead(place, enrichment, isFacebookOnly);
 
       await insertLeadIfNew(env.DB, {
         job_id: jobId,
