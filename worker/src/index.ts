@@ -9,7 +9,7 @@ import {
   getLeadsForJob, markFreeTrialUsed, setSheetConnection, getSheetConnection,
   adminListUsers, adminListJobs,
   submitReview, getApprovedReviews, adminListReviews, setReviewApproved,
-  generateAccessCodes, redeemAccessCode, adminListAccessCodes,
+  generateAccessCodes, redeemAccessCode, redeemAccessCodeByEmail, adminListAccessCodes, resetAccessCode,
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
@@ -19,7 +19,7 @@ import { sendGA4Event } from "./lib/analytics";
 type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-app.use("*", cors()); // frontend is a separate static site — see README on locking this down per-origin later
+app.use("*", cors());
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -48,10 +48,7 @@ app.post("/api/auth/login", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Public support chatbot — answers ONLY SmartLeadGen product questions.
-// Uses YOUR OWN key (a Worker secret), not any user's BYOK key, since
-// visitors asking this haven't signed up yet. Rate-limited per IP so one
-// visitor can't run up the API bill.
+// Public support chatbot
 // ---------------------------------------------------------------------------
 
 const SUPPORT_SYSTEM_PROMPT = `You are the SmartLeadGen support assistant, embedded on the SmartLeadGen marketing site. Answer ONLY questions about the SmartLeadGen product — what it does, how it works, pricing, signing up, API keys, Google Sheets/CSV export, troubleshooting, and account basics. Keep answers to a few short sentences.
@@ -93,8 +90,6 @@ app.post("/api/support-chat", async (c) => {
     .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
 
   try {
-    // Default: Workers AI (Llama) — free, no external account or key needed,
-    // which is why this is the default rather than a paid BYOK provider.
     if (!c.env.SUPPORT_CHATBOT_API_KEY) {
       const result: any = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
         messages: [
@@ -107,8 +102,6 @@ app.post("/api/support-chat", async (c) => {
       return c.json({ reply: (result.response ?? "").trim() });
     }
 
-    // Optional override: if you later set SUPPORT_CHATBOT_API_KEY, a paid
-    // provider is used instead (e.g. for higher quality than Llama gives).
     const prompt = chatHistory.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
     const fullPrompt = prompt ? `${prompt}\nUser: ${message.trim()}` : message.trim();
     const reply = await callLlm("anthropic", c.env.SUPPORT_CHATBOT_API_KEY, fullPrompt, {
@@ -138,10 +131,26 @@ app.post("/api/access-codes/redeem", requireAuth, async (c) => {
   return c.json({ ok: true, plan: "paid" });
 });
 
+app.post("/api/streamlit/verify-code", async (c) => {
+  const ip = c.req.header("CF-Connecting-IP") || "unknown";
+  const rateLimitKey = `coderate:${ip}`;
+  const countStr = await c.env.SESSIONS.get(rateLimitKey);
+  const count = countStr ? parseInt(countStr, 10) : 0;
+  if (count >= 10) return c.json({ error: "Too many attempts — try again in an hour." }, 429);
+  await c.env.SESSIONS.put(rateLimitKey, String(count + 1), { expirationTtl: 3600 });
+
+  const { code, email } = await c.req.json<{ code?: string; email?: string }>();
+  if (!code?.trim() || !email?.trim()) return c.json({ error: "Email and access code are both required." }, 400);
+
+  const ok = await redeemAccessCodeByEmail(c.env.DB, code, email);
+  if (!ok) return c.json({ error: "That code isn't valid, or has already been used." }, 400);
+
+  c.executionCtx.waitUntil(sendGA4Event(c.env, email, "access_code_redeemed", { source: "streamlit", user_email: email }));
+  return c.json({ ok: true });
+});
+
 // ---------------------------------------------------------------------------
-// BYOK provider keys — "Multiple Choice" UI hits this to store whichever
-// one the user picked. Required: google_places. Optional smart layer:
-// exactly one of gemini / openai / anthropic. Optional extra: hunter.
+// BYOK provider keys
 // ---------------------------------------------------------------------------
 
 const VALID_PROVIDERS: Provider[] = ["google_places", "hunter", "gemini", "openai", "anthropic"];
@@ -166,7 +175,7 @@ app.get("/api/keys", requireAuth, async (c) => {
   return c.json({
     configured,
     required: ["google_places"],
-    smart_layer_choices: ["gemini", "openai", "anthropic"], // the "multiple choice, any one" set
+    smart_layer_choices: ["gemini", "openai", "anthropic"],
   });
 });
 
@@ -184,7 +193,7 @@ app.post("/api/jobs", requireAuth, async (c) => {
   const body = await c.req.json<{
     keyword?: string; location?: string; maxResults?: number;
     runEnrichment?: boolean; llmProvider?: "gemini" | "openai" | "anthropic";
-    freeformGoal?: string; // "smart prompt" mode — needs an llmProvider key configured
+    freeformGoal?: string;
   }>();
 
   let keyword = body.keyword ?? "";
@@ -237,7 +246,6 @@ app.get("/api/jobs/:id/export.csv", requireAuth, async (c) => {
     .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
     .join("\n");
 
-  // Not retained after this response — see README on the CSV/PDF-vs-Sheets choice.
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -247,7 +255,7 @@ app.get("/api/jobs/:id/export.csv", requireAuth, async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Google Sheets — single connected account model (see lib/sheets.ts)
+// Google Sheets
 // ---------------------------------------------------------------------------
 
 app.post("/api/sheet-connection", requireAuth, async (c) => {
@@ -278,7 +286,7 @@ app.post("/api/jobs/:id/push-to-sheet", requireAuth, async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Admin — you only. Cross-user visibility lives ONLY here.
+// Admin
 // ---------------------------------------------------------------------------
 
 app.get("/api/admin/users", requireAuth, requireAdmin, async (c) => {
@@ -304,6 +312,14 @@ app.get("/api/admin/access-codes", requireAuth, requireAdmin, async (c) => {
   return c.json({ codes: await adminListAccessCodes(c.env.DB) });
 });
 
+app.post("/api/admin/access-codes/reset", requireAuth, requireAdmin, async (c) => {
+  const { code } = await c.req.json<{ code?: string }>();
+  if (!code?.trim()) return c.json({ error: "Which code?" }, 400);
+  const ok = await resetAccessCode(c.env.DB, code);
+  if (!ok) return c.json({ error: "No code matching that." }, 404);
+  return c.json({ ok: true });
+});
+
 app.post("/api/admin/reviews/:id/approve", requireAuth, requireAdmin, async (c) => {
   const { approved } = await c.req.json<{ approved?: boolean }>();
   await setReviewApproved(c.env.DB, c.req.param("id") ?? "", approved !== false);
@@ -311,8 +327,7 @@ app.post("/api/admin/reviews/:id/approve", requireAuth, requireAdmin, async (c) 
 });
 
 // ---------------------------------------------------------------------------
-// Reviews — only registered (logged-in) users can submit one; shown on the
-// public homepage only after admin approval, to keep the public list honest.
+// Reviews
 // ---------------------------------------------------------------------------
 
 app.post("/api/reviews", requireAuth, async (c) => {
