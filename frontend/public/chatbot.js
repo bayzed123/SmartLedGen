@@ -21,10 +21,11 @@
     <div class="slg-chat-head">
       <strong>SmartLeadGen help</strong>
       <span>Ask about setup, pricing, or how it works</span>
+      <a href="https://wa.me/message/TDYG575YENF6F1" target="_blank" rel="noopener" class="slg-chat-whatsapp" title="Chat with a human on WhatsApp">💬 WhatsApp</a>
       <button class="slg-chat-close" aria-label="Close chat">✕</button>
     </div>
     <div class="slg-chat-messages" id="slgChatMessages">
-      <div class="slg-chat-msg slg-chat-msg-bot">Hi! Ask me anything about SmartLeadGen — getting started, API keys, pricing, or troubleshooting a search.</div>
+      <div class="slg-chat-msg slg-chat-msg-bot">Hi! Ask me anything about SmartLeadGen — getting started, API keys, pricing, or troubleshooting a search. Prefer a person? Tap <strong>💬 WhatsApp</strong> above, any time.</div>
     </div>
     <form class="slg-chat-form" id="slgChatForm">
       <input type="text" id="slgChatInput" placeholder="Type a question…" autocomplete="off" />

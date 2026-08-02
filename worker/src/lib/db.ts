@@ -239,6 +239,19 @@ export async function redeemAccessCode(db: D1Database, code: string, userId: str
   return ok;
 }
 
+/** Same idea, for the Streamlit app — which has no Cloudflare account/user_id,
+ *  just an email typed into the gate. Shares the same code pool.
+ *
+ *  Unlike the Cloudflare flow, this does NOT mark the code single-use.
+ *  Streamlit has no persistent login — its session resets on every page
+ *  reload, new tab, and every auto-redeploy (which happens on every git
+ *  push). If a code stopped working after the first use, a real customer
+ *  would get locked out the very next time they revisited the app. The
+ *  code itself has to work as their ongoing "password" here — so it stays
+ *  valid on repeat entry. redeemed_at/redeemed_by_email are updated each
+ *  time so the admin view still shows who's using which code and when it
+ *  was last used. To cut off a specific customer (leaked code, etc.),
+ *  delete that row from access_codes — there's no separate "revoke" yet. */
 export async function redeemAccessCodeByEmail(db: D1Database, code: string, email: string): Promise<boolean> {
   const result = await db
     .prepare(
@@ -261,6 +274,9 @@ export async function adminListAccessCodes(db: D1Database) {
   return results.map((r: any) => ({ ...r, redeemed_by_email: r.user_email || r.redeemed_by_email }));
 }
 
+/** Reopens a code that got marked "redeemed" — self-service alternative to
+ *  asking for a direct DB reset each time. Safe to call on an already-unused
+ *  code (no-op in that case). */
 export async function resetAccessCode(db: D1Database, code: string): Promise<boolean> {
   const result = await db
     .prepare(
@@ -270,4 +286,62 @@ export async function resetAccessCode(db: D1Database, code: string): Promise<boo
     .bind(code.trim())
     .run();
   return (result.meta.changes ?? 0) > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Streamlit per-user config — Streamlit has no real accounts, so each
+// person's OWN Google Places key / Sheet URL / service account JSON is
+// saved here keyed by email (not as a shared Streamlit Cloud "Secret",
+// which would mean every visitor uses the SAME key and the SAME person
+// pays for everyone's searches). Encrypted fields use the same
+// ENCRYPTION_KEY as the Cloudflare BYOK keys.
+// ---------------------------------------------------------------------------
+
+export async function saveStreamlitConfig(
+  db: D1Database,
+  email: string,
+  fields: Partial<{
+    placesKeyEncrypted: string; placesKeyIv: string;
+    sheetUrl: string;
+    saJsonEncrypted: string; saJsonIv: string;
+  }>
+) {
+  const normalizedEmail = email.toLowerCase().trim();
+  const existing = await db
+    .prepare(`SELECT * FROM streamlit_configs WHERE email = ?`)
+    .bind(normalizedEmail)
+    .first<any>();
+
+  const merged = {
+    places_key_encrypted: fields.placesKeyEncrypted ?? existing?.places_key_encrypted ?? null,
+    places_key_iv: fields.placesKeyIv ?? existing?.places_key_iv ?? null,
+    sheet_url: fields.sheetUrl ?? existing?.sheet_url ?? null,
+    sa_json_encrypted: fields.saJsonEncrypted ?? existing?.sa_json_encrypted ?? null,
+    sa_json_iv: fields.saJsonIv ?? existing?.sa_json_iv ?? null,
+  };
+
+  await db
+    .prepare(
+      `INSERT INTO streamlit_configs (email, places_key_encrypted, places_key_iv, sheet_url, sa_json_encrypted, sa_json_iv, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(email) DO UPDATE SET
+         places_key_encrypted = excluded.places_key_encrypted,
+         places_key_iv = excluded.places_key_iv,
+         sheet_url = excluded.sheet_url,
+         sa_json_encrypted = excluded.sa_json_encrypted,
+         sa_json_iv = excluded.sa_json_iv,
+         updated_at = datetime('now')`
+    )
+    .bind(normalizedEmail, merged.places_key_encrypted, merged.places_key_iv, merged.sheet_url, merged.sa_json_encrypted, merged.sa_json_iv)
+    .run();
+}
+
+export async function getStreamlitConfig(db: D1Database, email: string) {
+  return db
+    .prepare(`SELECT * FROM streamlit_configs WHERE email = ?`)
+    .bind(email.toLowerCase().trim())
+    .first<{
+      email: string; places_key_encrypted: string | null; places_key_iv: string | null;
+      sheet_url: string | null; sa_json_encrypted: string | null; sa_json_iv: string | null;
+    }>();
 }

@@ -10,6 +10,7 @@ import {
   adminListUsers, adminListJobs,
   submitReview, getApprovedReviews, adminListReviews, setReviewApproved,
   generateAccessCodes, redeemAccessCode, redeemAccessCodeByEmail, adminListAccessCodes, resetAccessCode,
+  saveStreamlitConfig, getStreamlitConfig,
 } from "./lib/db";
 import { runJob } from "./lib/job";
 import { appendLeadsToSheet } from "./lib/sheets";
@@ -19,7 +20,7 @@ import { sendGA4Event } from "./lib/analytics";
 type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-app.use("*", cors());
+app.use("*", cors()); // frontend is a separate static site — see README on locking this down per-origin later
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -48,7 +49,10 @@ app.post("/api/auth/login", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Public support chatbot
+// Public support chatbot — answers ONLY SmartLeadGen product questions.
+// Uses YOUR OWN key (a Worker secret), not any user's BYOK key, since
+// visitors asking this haven't signed up yet. Rate-limited per IP so one
+// visitor can't run up the API bill.
 // ---------------------------------------------------------------------------
 
 const SUPPORT_SYSTEM_PROMPT = `You are the SmartLeadGen support assistant, embedded on the SmartLeadGen marketing site. Answer ONLY questions about the SmartLeadGen product — what it does, how it works, pricing, signing up, API keys, Google Sheets/CSV export, troubleshooting, and account basics. Keep answers to a few short sentences.
@@ -62,7 +66,9 @@ Facts about SmartLeadGen:
 - Every user's API keys are encrypted before storage, and each user's data is isolated from other users' — nobody can see another user's leads or keys.
 - Built by Sayad Md Bayezid Hosan (sayadbayezid.com).
 
-If a question is unrelated to SmartLeadGen (general knowledge, other products, personal advice, anything else), say briefly that you can only help with SmartLeadGen questions and point to support@sayadbayezid.com or the Help Center for anything else. Never make up a feature, price, or policy that isn't listed above — say it's not finalized yet instead.`;
+If a question is unrelated to SmartLeadGen (general knowledge, other products, personal advice, anything else), say briefly that you can only help with SmartLeadGen questions and point to support@sayadbayezid.com or the Help Center for anything else. Never make up a feature, price, or policy that isn't listed above — say it's not finalized yet instead.
+
+If you don't know the answer, the question needs a human judgment call (refunds, custom requests, account-specific issues), or the person seems stuck after a couple of exchanges, say so plainly and point them to WhatsApp for direct human support: https://wa.me/message/TDYG575YENF6F1 (also always visible as a button at the top of this chat).`;
 
 app.post("/api/support-chat", async (c) => {
   const ip = c.req.header("CF-Connecting-IP") || "unknown";
@@ -90,6 +96,8 @@ app.post("/api/support-chat", async (c) => {
     .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
 
   try {
+    // Default: Workers AI (Llama) — free, no external account or key needed,
+    // which is why this is the default rather than a paid BYOK provider.
     if (!c.env.SUPPORT_CHATBOT_API_KEY) {
       const result: any = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
         messages: [
@@ -102,6 +110,8 @@ app.post("/api/support-chat", async (c) => {
       return c.json({ reply: (result.response ?? "").trim() });
     }
 
+    // Optional override: if you later set SUPPORT_CHATBOT_API_KEY, a paid
+    // provider is used instead (e.g. for higher quality than Llama gives).
     const prompt = chatHistory.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
     const fullPrompt = prompt ? `${prompt}\nUser: ${message.trim()}` : message.trim();
     const reply = await callLlm("anthropic", c.env.SUPPORT_CHATBOT_API_KEY, fullPrompt, {
@@ -131,6 +141,9 @@ app.post("/api/access-codes/redeem", requireAuth, async (c) => {
   return c.json({ ok: true, plan: "paid" });
 });
 
+// Same idea, for the Streamlit app (no Cloudflare account there — just an
+// email typed into its own gate). Rate-limited per IP so codes can't be
+// brute-forced by guessing.
 app.post("/api/streamlit/verify-code", async (c) => {
   const ip = c.req.header("CF-Connecting-IP") || "unknown";
   const rateLimitKey = `coderate:${ip}`;
@@ -149,8 +162,62 @@ app.post("/api/streamlit/verify-code", async (c) => {
   return c.json({ ok: true });
 });
 
+// Each Streamlit visitor's OWN Places key / Sheet URL / service account JSON,
+// saved per-email — NOT a shared Streamlit Cloud "Secret" (which would mean
+// every visitor's searches get billed to whoever's key is in that secret).
+// Gated by the same access code as the gate itself, not a full login system.
+async function codeIsValid(db: D1Database, code: string): Promise<boolean> {
+  const row = await db.prepare(`SELECT 1 FROM access_codes WHERE code = ?`).bind(code.trim()).first();
+  return !!row;
+}
+
+app.post("/api/streamlit/save-config", async (c) => {
+  const { email, code, googlePlacesKey, sheetUrl, serviceAccountJson } = await c.req.json<{
+    email?: string; code?: string; googlePlacesKey?: string; sheetUrl?: string; serviceAccountJson?: string;
+  }>();
+  if (!email?.trim() || !code?.trim()) return c.json({ error: "Email and access code are required." }, 400);
+  if (!(await codeIsValid(c.env.DB, code))) return c.json({ error: "That access code isn't recognized." }, 403);
+
+  const fields: Parameters<typeof saveStreamlitConfig>[2] = {};
+  if (googlePlacesKey?.trim()) {
+    const enc = await encryptSecret(googlePlacesKey.trim(), c.env.ENCRYPTION_KEY);
+    fields.placesKeyEncrypted = enc.ciphertext;
+    fields.placesKeyIv = enc.iv;
+  }
+  if (sheetUrl?.trim()) fields.sheetUrl = sheetUrl.trim();
+  if (serviceAccountJson?.trim()) {
+    const enc = await encryptSecret(serviceAccountJson.trim(), c.env.ENCRYPTION_KEY);
+    fields.saJsonEncrypted = enc.ciphertext;
+    fields.saJsonIv = enc.iv;
+  }
+
+  await saveStreamlitConfig(c.env.DB, email, fields);
+  return c.json({ ok: true });
+});
+
+app.get("/api/streamlit/config", async (c) => {
+  const email = c.req.query("email");
+  const code = c.req.query("code");
+  if (!email?.trim() || !code?.trim()) return c.json({ error: "Email and access code are required." }, 400);
+  if (!(await codeIsValid(c.env.DB, code))) return c.json({ error: "That access code isn't recognized." }, 403);
+
+  const row = await getStreamlitConfig(c.env.DB, email);
+  if (!row) return c.json({ googlePlacesKey: null, sheetUrl: null, serviceAccountJson: null });
+
+  const googlePlacesKey = row.places_key_encrypted && row.places_key_iv
+    ? await decryptSecret(row.places_key_encrypted, row.places_key_iv, c.env.ENCRYPTION_KEY)
+    : null;
+  const serviceAccountJson = row.sa_json_encrypted && row.sa_json_iv
+    ? await decryptSecret(row.sa_json_encrypted, row.sa_json_iv, c.env.ENCRYPTION_KEY)
+    : null;
+
+  return c.json({ googlePlacesKey, sheetUrl: row.sheet_url ?? null, serviceAccountJson });
+});
+
 // ---------------------------------------------------------------------------
-// BYOK provider keys
+// BYOK provider keys — "Multiple Choice" UI hits this to store whichever
+// one the user picked. Required: google_places. Optional smart layer:
+// exactly one of gemini / openai / anthropic. Optional extra: hunter.
 // ---------------------------------------------------------------------------
 
 const VALID_PROVIDERS: Provider[] = ["google_places", "hunter", "gemini", "openai", "anthropic"];
@@ -175,7 +242,7 @@ app.get("/api/keys", requireAuth, async (c) => {
   return c.json({
     configured,
     required: ["google_places"],
-    smart_layer_choices: ["gemini", "openai", "anthropic"],
+    smart_layer_choices: ["gemini", "openai", "anthropic"], // the "multiple choice, any one" set
   });
 });
 
@@ -193,7 +260,7 @@ app.post("/api/jobs", requireAuth, async (c) => {
   const body = await c.req.json<{
     keyword?: string; location?: string; maxResults?: number;
     runEnrichment?: boolean; llmProvider?: "gemini" | "openai" | "anthropic";
-    freeformGoal?: string;
+    freeformGoal?: string; // "smart prompt" mode — needs an llmProvider key configured
   }>();
 
   let keyword = body.keyword ?? "";
@@ -246,6 +313,7 @@ app.get("/api/jobs/:id/export.csv", requireAuth, async (c) => {
     .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
     .join("\n");
 
+  // Not retained after this response — see README on the CSV/PDF-vs-Sheets choice.
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -255,7 +323,7 @@ app.get("/api/jobs/:id/export.csv", requireAuth, async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Google Sheets
+// Google Sheets — single connected account model (see lib/sheets.ts)
 // ---------------------------------------------------------------------------
 
 app.post("/api/sheet-connection", requireAuth, async (c) => {
@@ -286,7 +354,7 @@ app.post("/api/jobs/:id/push-to-sheet", requireAuth, async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// Admin
+// Admin — you only. Cross-user visibility lives ONLY here.
 // ---------------------------------------------------------------------------
 
 app.get("/api/admin/users", requireAuth, requireAdmin, async (c) => {
@@ -327,7 +395,8 @@ app.post("/api/admin/reviews/:id/approve", requireAuth, requireAdmin, async (c) 
 });
 
 // ---------------------------------------------------------------------------
-// Reviews
+// Reviews — only registered (logged-in) users can submit one; shown on the
+// public homepage only after admin approval, to keep the public list honest.
 // ---------------------------------------------------------------------------
 
 app.post("/api/reviews", requireAuth, async (c) => {

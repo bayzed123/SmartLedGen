@@ -140,6 +140,8 @@ function renderJob(job, leads) {
   document.getElementById("progressText").textContent = `${job.progress_current} / ${job.progress_total}`;
 
   if (job.status === "error") {
+    // Distinguish "you hit a provider's rate limit" from a generic failure —
+    // the "warning when API limited" requirement.
     const isRateLimit = /rate.?limit|429|quota/i.test(job.error_message || "");
     banner("searchBanner", job.error_message || "The job failed.", isRateLimit ? "warn" : "error");
   } else if (job.status === "done") {
@@ -173,6 +175,7 @@ function renderLeads(leads) {
     const dl = document.getElementById("downloadCsv");
     dl.style.display = "inline-block";
     dl.href = `${API_BASE}/api/jobs/${currentJobId}/export.csv`;
+    // Auth needed — a plain link can't send the Bearer header, so intercept the click.
     dl.onclick = async (e) => {
       e.preventDefault();
       const token = TokenStore.get();
@@ -283,6 +286,10 @@ const AI_PROVIDERS = ["gemini", "openai", "anthropic"];
 
     const configuredProvider = AI_PROVIDERS.find((p) => data.configured.includes(p));
     if (configuredProvider) {
+      // Show it's configured, but don't silently activate it — the user must
+      // click the card themselves this session before it's used for a search.
+      // Auto-selecting here used to mean a stale/out-of-quota key from weeks ago
+      // could get used with no visible sign of which provider was active.
       const opt = document.querySelector(`.slg-provider-opt[data-provider="${configuredProvider}"]`);
       if (opt) opt.querySelector("span").textContent += " (key already saved — click to use it)";
       document.getElementById("llmKey").placeholder = "Configured ✅ — paste a new key to replace it";

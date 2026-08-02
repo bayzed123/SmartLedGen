@@ -262,6 +262,7 @@ details.slg-why p { color: var(--text-soft); margin: 8px 0; line-height: 1.5; }
 .slg-chat-head strong { display: block; font-family: 'Space Grotesk', sans-serif; }
 .slg-chat-head span { font-size: 0.76rem; opacity: 0.8; }
 .slg-chat-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: white; cursor: pointer; font-size: 1rem; }
+.slg-chat-whatsapp { display: inline-block; margin-top: 8px; background: #25D366; color: #04150C; text-decoration: none; font-size: 0.78rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; }
 .slg-chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .slg-chat-msg { font-size: 0.86rem; padding: 9px 12px; border-radius: 10px; max-width: 85%; line-height: 1.4; }
 .slg-chat-msg-bot { background: var(--off-white); align-self: flex-start; }

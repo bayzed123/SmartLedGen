@@ -92,10 +92,13 @@ CREATE INDEX IF NOT EXISTS idx_reviews_approved ON reviews(approved);
 
 -- Manual paid-access gate ahead of real subscription billing — a code
 -- redeemed once sets that account's plan to 'paid' (unlimited access).
+-- redeemed_by_email covers redemptions from the Streamlit app, which has
+-- no Cloudflare account/user_id of its own.
 CREATE TABLE IF NOT EXISTS access_codes (
   code TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'unused' CHECK (status IN ('unused','redeemed')),
   redeemed_by_user_id TEXT REFERENCES users(id),
+  redeemed_by_email TEXT,
   redeemed_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
