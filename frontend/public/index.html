@@ -62,16 +62,69 @@
 
   <section class="home-section home-pricing" id="pricing">
     <h2>Pricing</h2>
-    <p class="home-section-sub">Still being finalized — we want real usage numbers before setting a fair rate, not a guess.</p>
-    <div class="home-pricing-grid">
+    <p class="home-section-sub">Bring your own Google Places key — you only pay SmartLeadGen for the tool itself, not per search.</p>
+    <div class="home-pricing-grid" style="grid-template-columns:repeat(3,1fr)">
       <div class="home-pricing-card">
-        <div>Right now</div>
-        <div class="price">0<span> / first search</span></div>
-        <p>One full search is free on every account — no card needed. You bring your own Google Places API key (their free tier covers casual use).</p>
-        <a href="/login.html?signup=1" class="home-cta-primary" style="display:inline-block;margin-top:10px">Start free</a>
+        <div>Starter</div>
+        <div class="price">$9<span> / month</span></div>
+        <p class="home-pricing-alt">≈ 1,100 BDT</p>
+        <p>Unlimited searches on your own key, CSV export, email support.</p>
+        <a href="#payment-methods" class="home-cta-primary" style="display:inline-block;margin-top:10px">Get access</a>
+      </div>
+      <div class="home-pricing-card" style="border-color:var(--amber)">
+        <div>Agency</div>
+        <div class="price">$29<span> / month</span></div>
+        <p class="home-pricing-alt">≈ 3,500 BDT</p>
+        <p>Everything in Starter + live Google Sheets sync + priority support.</p>
+        <a href="#payment-methods" class="home-cta-primary" style="display:inline-block;margin-top:10px">Get access</a>
+      </div>
+      <div class="home-pricing-card">
+        <div>Agency Pro</div>
+        <div class="price">$59<span> / month</span></div>
+        <p class="home-pricing-alt">≈ 7,000 BDT</p>
+        <p>Everything in Agency + multiple teammates, priority feature requests.</p>
+        <a href="#payment-methods" class="home-cta-primary" style="display:inline-block;margin-top:10px">Get access</a>
       </div>
     </div>
-    <p class="home-pricing-note">Paid plans will be priced per search volume once running costs are confirmed. Existing free-trial users won't be surprised by it — we'll announce it here first.</p>
+    <p class="home-pricing-note">Prices are a starting point while real usage costs get confirmed — early customers won't be surprised by changes; we'll announce any here first. BDT figures are approximate.</p>
+
+    <div id="payment-methods" class="payment-panel">
+      <h3><svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="vertical-align:-4px;margin-right:6px"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><rect x="2" y="9" width="20" height="3" fill="currentColor"/></svg>Pay for access</h3>
+      <p class="home-section-sub">Message <a href="mailto:support@sayadbayezid.com">support@sayadbayezid.com</a> with your chosen plan first, then send payment using whichever method suits you — an access code follows once it's confirmed.</p>
+
+      <div class="payment-grid">
+        <div class="payment-card">
+          <div class="payment-card-label">PayPal</div>
+          <div class="payment-value" data-full="@connectwithbayezid">@con•••••••ezid</div>
+          <button class="payment-copy-btn" data-copy="@connectwithbayezid">📋 Copy</button>
+          <p class="payment-guide">Send as Friends &amp; Family to avoid fees, with your email in the note.</p>
+        </div>
+        <div class="payment-card">
+          <div class="payment-card-label">Binance (UID)</div>
+          <div class="payment-value" data-full="1157359156">1157•••156</div>
+          <button class="payment-copy-btn" data-copy="1157359156">📋 Copy</button>
+          <p class="payment-guide">Binance app → Pay → Send via Pay ID / UID.</p>
+        </div>
+        <div class="payment-card">
+          <div class="payment-card-label">bKash (Send Money)</div>
+          <div class="payment-value" data-full="01791527854">0179•••2854</div>
+          <button class="payment-copy-btn" data-copy="01791527854">📋 Copy</button>
+          <p class="payment-guide">Use "Send Money," not "Payment" — Send Money has no fee for you.</p>
+        </div>
+        <div class="payment-card">
+          <div class="payment-card-label">Nagad / Rocket</div>
+          <div class="payment-value" data-full="01519601517">0151•••1517</div>
+          <button class="payment-copy-btn" data-copy="01519601517">📋 Copy</button>
+          <p class="payment-guide">Same number works for either app.</p>
+        </div>
+        <div class="payment-card" style="grid-column:1/-1">
+          <div class="payment-card-label">Crypto — USDT/BNB on BNB Smart Chain (BEP20)</div>
+          <div class="payment-value" data-full="0xd2776bf161ef367f785e3c35c3053d0a5a514220" style="font-family:monospace;word-break:break-all">0xd2776b••••••••••••••••••••••••••••a514220</div>
+          <button class="payment-copy-btn" data-copy="0xd2776bf161ef367f785e3c35c3053d0a5a514220">📋 Copy</button>
+          <p class="payment-guide">BEP20 network only — sending on another network (e.g. ERC20, TRC20) will lose the funds.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="home-section" id="reviews-section">
